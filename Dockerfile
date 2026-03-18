@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 
 COPY tsconfig.json ./
 COPY src/ ./src/
@@ -24,6 +24,8 @@ COPY groups/global/TIPS.md ./groups/global/TIPS.md
 COPY groups/global/learned-rules.md ./groups/global/learned-rules.md
 
 RUN npx tsc
+# Remove dev dependencies after build
+RUN npm prune --omit=dev
 
 # Create directories for mounted volumes
 RUN mkdir -p store data logs groups .ssh
