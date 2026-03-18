@@ -37,7 +37,7 @@ NODE_PATH=/tmp/node_modules node -e "
 const { JSDOM, VirtualConsole } = require('jsdom');
 const http = require('http');
 http.get({ hostname: 'localhost', port: 8080, path: '/',
-  headers: { 'Authorization': 'Basic ' + Buffer.from('mark:mark').toString('base64') }
+  headers: { 'Authorization': 'Basic ' + Buffer.from('admin:changeminprod').toString('base64') }
 }, res => {
   let d = ''; res.on('data', c => d += c); res.on('end', () => {
     const errs = []; const vc = new VirtualConsole();

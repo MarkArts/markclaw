@@ -647,8 +647,8 @@ function parseTranscript(
   return messages;
 }
 
-const BASIC_AUTH_USER = 'mark';
-const BASIC_AUTH_PASS = 'mark';
+const BASIC_AUTH_USER = process.env.WEB_UI_USER || 'admin';
+const BASIC_AUTH_PASS = process.env.WEB_UI_PASS || 'changeminprod';
 
 function checkAuth(
   req: http.IncomingMessage,
