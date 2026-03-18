@@ -5,8 +5,10 @@ services:
     environment:
       - CONTAINER_IMAGE=markclaw-agent:latest
     volumes:
-      # Docker socket — markclaw spawns agent containers on the host
+      # Docker socket — markclaw spawns agent containers on the host (DinD)
       - /var/run/docker.sock:/var/run/docker.sock
+      # Claude OAuth credentials from host
+      - ${HOME}/.claude/.credentials.json:/root/.claude/.credentials.json
       # Persistent data
       - ./store:/app/store
       - ./data:/app/data

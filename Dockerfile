@@ -28,6 +28,9 @@ RUN npx tsc
 # Create directories for mounted volumes
 RUN mkdir -p store data logs groups .ssh
 
+# HOME must match where docker-compose mounts .credentials.json
+ENV HOME=/root
+
 EXPOSE 8080
 
 CMD ["node", "dist/index.js"]

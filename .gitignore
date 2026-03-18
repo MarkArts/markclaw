@@ -16,6 +16,7 @@ groups/*
 groups/main/*
 groups/global/*
 !groups/global/*.md
+!groups/global/*.example
 groups/global/SOUL.md
 groups/global/COMPANY.md
 !groups/main/CLAUDE.md
