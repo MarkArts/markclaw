@@ -443,10 +443,12 @@ function buildContainerArgs(
     args.push('-e', 'HOME=/home/node');
   }
 
-  // Mount Docker socket directly (TODO: lock down with socket proxy later)
-  args.push('-v', '/var/run/docker.sock:/var/run/docker.sock');
-  args.push('--group-add', '993');
-  args.push('-e', 'DOCKER_HOST=unix:///var/run/docker.sock');
+  // Mount Docker socket for agent containers (only when using Docker, not Podman)
+  if (CONTAINER_RUNTIME_BIN === 'docker' && fs.existsSync('/var/run/docker.sock')) {
+    args.push('-v', '/var/run/docker.sock:/var/run/docker.sock');
+    args.push('--group-add', '993');
+    args.push('-e', 'DOCKER_HOST=unix:///var/run/docker.sock');
+  }
 
   for (const mount of mounts) {
     const hostPath = toHostPath(mount.hostPath);
