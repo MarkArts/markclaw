@@ -6,8 +6,8 @@ import { execSync } from 'child_process';
 
 import { logger } from './logger.js';
 
-/** The container runtime binary name. */
-export const CONTAINER_RUNTIME_BIN = 'docker';
+/** The container runtime binary name (docker or podman). */
+export const CONTAINER_RUNTIME_BIN = process.env.CONTAINER_RUNTIME || 'docker';
 
 /** Returns CLI args for a readonly bind mount. */
 export function readonlyMountArgs(

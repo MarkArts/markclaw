@@ -1,21 +1,29 @@
 services:
   markclaw:
     build: .
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
       - CONTAINER_IMAGE=markclaw-agent:latest
+    # Podman inside the container needs these for spawning agent containers
+    devices:
+      - /dev/fuse
+    security_opt:
+      - label=disable
+    cap_add:
+      - SYS_ADMIN
     volumes:
-      # Docker socket — markclaw spawns agent containers on the host (DinD)
-      - /var/run/docker.sock:/var/run/docker.sock
-      # Claude OAuth credentials from host
-      - ${HOME}/.claude/.credentials.json:/root/.claude/.credentials.json
       # Persistent data
       - ./store:/app/store
       - ./data:/app/data
       - ./logs:/app/logs
       - ./groups:/app/groups
-      # SSH keys for agents (generated during setup)
-      - ./.ssh:/app/.ssh:ro
+      # Podman container storage (persists pulled/loaded images)
+      - markclaw-containers:/var/lib/containers/storage
     ports:
       - "8080:8080"
     restart: unless-stopped
+
+volumes:
+  markclaw-containers:

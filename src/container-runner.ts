@@ -27,6 +27,23 @@ import {
 import { validateAdditionalMounts } from './mount-security.js';
 import { RegisteredGroup } from './types.js';
 
+/**
+ * When running inside Docker Compose, mount paths must be translated from
+ * container paths (/app/...) to host paths so the Docker daemon can find them.
+ * HOST_PROJECT_DIR is set by docker-compose.yml to ${PWD}.
+ */
+const HOST_PROJECT_DIR = process.env.HOST_PROJECT_DIR;
+const HOST_HOME = process.env.HOST_HOME;
+
+function toHostPath(containerPath: string): string {
+  if (!HOST_PROJECT_DIR) return containerPath;
+  const cwd = process.cwd();
+  if (containerPath.startsWith(cwd)) {
+    return HOST_PROJECT_DIR + containerPath.slice(cwd.length);
+  }
+  return containerPath;
+}
+
 // Sentinel markers for robust output parsing (must match agent-runner)
 const OUTPUT_START_MARKER = '---MARKCLAW_OUTPUT_START---';
 const OUTPUT_END_MARKER = '---MARKCLAW_OUTPUT_END---';
@@ -168,12 +185,14 @@ function buildVolumeMounts(
 
   // Mount host Claude OAuth credentials read-write so containers can refresh
   // the auth token when it expires.
-  const hostCredentials = path.join(
-    os.homedir(),
-    '.claude',
-    '.credentials.json',
-  );
-  if (fs.existsSync(hostCredentials)) {
+  // HOST_HOME overrides os.homedir() for Docker Compose (where homedir is /root
+  // inside the compose container, but agent containers run on the host Docker daemon).
+  const hostHome = HOST_HOME || os.homedir();
+  const hostCredentials = path.join(hostHome, '.claude', '.credentials.json');
+  // When running inside Docker Compose, the file won't exist locally but the
+  // path is still valid for agent containers (they mount from the host).
+  const credentialsExist = fs.existsSync(hostCredentials) || HOST_HOME;
+  if (credentialsExist) {
     mounts.push({
       hostPath: hostCredentials,
       containerPath: '/home/node/.claude/.credentials.json',
@@ -430,10 +449,11 @@ function buildContainerArgs(
   args.push('-e', 'DOCKER_HOST=unix:///var/run/docker.sock');
 
   for (const mount of mounts) {
+    const hostPath = toHostPath(mount.hostPath);
     if (mount.readonly) {
-      args.push(...readonlyMountArgs(mount.hostPath, mount.containerPath));
+      args.push(...readonlyMountArgs(hostPath, mount.containerPath));
     } else {
-      args.push('-v', `${mount.hostPath}:${mount.containerPath}`);
+      args.push('-v', `${hostPath}:${mount.containerPath}`);
     }
   }
 

@@ -1,14 +1,16 @@
 FROM node:22-slim
 
-# Install Docker CLI so the main process can spawn agent containers
+# Install Podman for spawning agent containers (no Docker socket needed)
 RUN apt-get update && apt-get install -y \
-    ca-certificates curl gnupg \
-    && install -m 0755 -d /etc/apt/keyrings \
-    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable" \
-       > /etc/apt/sources.list.d/docker.list \
-    && apt-get update && apt-get install -y docker-ce-cli \
+    podman fuse-overlayfs slirp4netns uidmap ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Configure Podman storage for operation inside a container
+RUN mkdir -p /etc/containers /run/containers/storage /var/lib/containers/storage && \
+    printf '[storage]\ndriver = "overlay"\nrunroot = "/run/containers/storage"\ngraphroot = "/var/lib/containers/storage"\n[storage.options.overlay]\nmount_program = "/usr/bin/fuse-overlayfs"\n' \
+    > /etc/containers/storage.conf && \
+    printf '[engine]\ncgroup_manager = "cgroupfs"\nevents_logger = "file"\n' \
+    > /etc/containers/containers.conf
 
 WORKDIR /app
 
@@ -24,14 +26,12 @@ COPY groups/global/TIPS.md ./groups/global/TIPS.md
 COPY groups/global/learned-rules.md ./groups/global/learned-rules.md
 
 RUN npx tsc
-# Remove dev dependencies after build
 RUN npm prune --omit=dev
 
 # Create directories for mounted volumes
 RUN mkdir -p store data logs groups .ssh
 
-# HOME must match where docker-compose mounts .credentials.json
-ENV HOME=/root
+ENV CONTAINER_RUNTIME=podman
 
 EXPOSE 8080
 

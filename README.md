@@ -156,15 +156,16 @@ loginctl enable-linger $USER
 
 ```bash
 git clone https://github.com/MarkArts/markclaw.git && cd markclaw
-claude /login                # authenticate Claude Code on the host
-cp .env.example .env         # optionally add Slack tokens
-docker build -t markclaw-agent container/         # build the agent container image
-docker compose up -d         # start markclaw
+cp .env.example .env                              # optionally add Slack tokens
+docker build -t markclaw-agent container/         # build the agent image
+docker save markclaw-agent -o /tmp/agent.tar      # export for Podman
+docker compose up -d                              # start markclaw
+docker compose exec markclaw podman load -i /tmp/agent.tar  # load agent image into Podman
 ```
 
 The web UI is at `http://localhost:8080`. Slack is optional — without tokens, MarkClaw runs in web-UI-only mode.
 
-The agent container image must be built on the host since MarkClaw spawns containers via the Docker socket (Docker-in-Docker).
+The compose container uses Podman internally to spawn agent containers (no Docker socket mounting needed). The agent image is built with Docker on the host and loaded into Podman inside the container.
 
 ## Development
 
