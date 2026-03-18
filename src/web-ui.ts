@@ -3603,7 +3603,7 @@ export function startWebUI(opts?: {
     .then(() => {
       const server = http.createServer(handleRequest);
       server.listen(WEB_UI_PORT, '0.0.0.0', () => {
-        logger.info({ port: WEB_UI_PORT }, 'Web UI started');
+        logger.info(`Web UI started on http://localhost:${WEB_UI_PORT}`);
       });
       server.on('error', (err) => {
         logger.error({ err }, 'Web UI server error');
