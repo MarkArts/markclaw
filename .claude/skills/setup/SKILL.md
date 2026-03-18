@@ -102,7 +102,7 @@ Show the public key and tell the user:
 
 ```bash
 npm run build
-./container/build.sh
+docker build -t markclaw-agent container/
 ```
 
 If the container build fails, check Docker is running and retry.

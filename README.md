@@ -88,7 +88,7 @@ Slack is optional. Without it, use the web UI on port 8080 to start conversation
 ### 5. Build the agent container
 
 ```bash
-./container/build.sh
+docker build -t markclaw-agent container/
 ```
 
 This builds the Docker image (`markclaw-agent:latest`) with all tools pre-installed: `gh`, `aws`, `heroku`, `jira`, Chromium, Nix, and Claude Code.
@@ -157,7 +157,7 @@ loginctl enable-linger $USER
 git clone https://github.com/MarkArts/markclaw.git && cd markclaw
 claude /login                # authenticate Claude Code on the host
 cp .env.example .env         # optionally add Slack tokens
-./container/build.sh         # build the agent container image
+docker build -t markclaw-agent container/         # build the agent container image
 docker compose up -d         # start markclaw
 ```
 
@@ -169,7 +169,7 @@ The agent container image must be built on the host since MarkClaw spawns contai
 
 ```bash
 npm run build              # Compile TypeScript
-./container/build.sh       # Rebuild agent container
+docker build -t markclaw-agent container/       # Rebuild agent container
 systemctl --user restart markclaw
 ```
 

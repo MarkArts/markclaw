@@ -24,7 +24,7 @@ Run commands directly — don't tell the user to run them.
 ```bash
 source ~/.nvm/nvm.sh
 npm run build              # Compile TypeScript
-./container/build.sh       # Rebuild agent container
+docker build -t markclaw-agent container/       # Rebuild agent container
 systemctl --user restart markclaw
 ```
 
@@ -57,4 +57,4 @@ http.get({ hostname: 'localhost', port: 8080, path: '/',
 
 ## Container Build Cache
 
-Buildkit caches aggressively. `--no-cache` alone does NOT invalidate COPY steps. To force a clean rebuild, prune the builder then re-run `./container/build.sh`.
+Buildkit caches aggressively. `--no-cache` alone does NOT invalidate COPY steps. To force a clean rebuild, prune the builder then re-run `docker build -t markclaw-agent container/`.
