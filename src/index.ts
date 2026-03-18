@@ -665,9 +665,10 @@ async function main(): Promise<void> {
     const group = registeredGroups[groupJid];
     const name = group?.name || groupJid;
     logger.error({ groupJid, name }, 'Max retries exhausted, notifying user');
-    // Send a DM notification about the failure
+    // Send a DM notification about the failure (skip for webui sessions)
+    if (groupJid.startsWith('webui:')) return;
     const mainJid = Object.keys(registeredGroups).find(
-      (jid) => registeredGroups[jid].isMain,
+      (jid) => registeredGroups[jid].isMain && !jid.startsWith('webui:'),
     );
     if (mainJid) {
       routeOutbound(
