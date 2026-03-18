@@ -572,6 +572,19 @@ async function main(): Promise<void> {
     logger.warn('No channels connected — running in web-UI-only mode');
   }
 
+  // Ensure a default webui session exists so the web UI always has something to interact with
+  const defaultWebUIJid = 'webui:default';
+  if (!registeredGroups[defaultWebUIJid]) {
+    registerGroup(defaultWebUIJid, {
+      name: 'Web UI',
+      folder: 'webui_default',
+      trigger: '',
+      added_at: new Date().toISOString(),
+      isMain: true,
+    });
+    logger.info('Created default Web UI session');
+  }
+
   // Start subsystems (independently of connection handler)
   startSchedulerLoop({
     registeredGroups: () => registeredGroups,
