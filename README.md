@@ -7,7 +7,7 @@ Opinionated for a single-user production setup.
 ## What it does
 
 - **Slack DM or web UI** — message your assistant via Slack (default) or the built-in web UI on port 8080
-- **Thread-based tasks** — complex work gets its own Slack thread with a dedicated agent session
+- **Thread-based tasks** — Every slack thread is it's own session
 - **Scheduled tasks** — recurring cron jobs that run Claude agents (e.g. daily briefings, CI monitoring)
 - **Per-group memory** — each conversation has its own `CLAUDE.md` that the agent reads and writes to
 - **Tool access** — agents have `gh`, `aws`, `heroku`, `jira`, Sentry, Slite, Google Workspace CLI, all pre-authenticated
@@ -21,6 +21,7 @@ Opinionated for a single-user production setup.
 - **OAuth only.** Agents authenticate via Claude Code OAuth (`~/.claude/.credentials.json`), not API keys. Run `claude /login` on the host before starting.
 - **No config files.** Want different behavior? Modify the code. The codebase is small enough that Claude can safely change it.
 - **Shared Nix store.** Host's `/nix` is mounted into containers so agents can `nix-shell -p <pkg>` for any tool they need.
+- **Don't run this on the public internet**  The webui uses basic auth. Do not expect this to be safe to run without a vpn
 
 ## Architecture
 
