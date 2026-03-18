@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="fbg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f1729"/>
+      <stop offset="100%" stop-color="#1a2744"/>
+    </linearGradient>
+    <linearGradient id="fc1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00d4aa"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <linearGradient id="fc2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="fc3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect x="0" y="0" width="32" height="32" rx="7" fill="url(#fbg)"/>
+  <!-- Three bold claw marks - simplified for small size -->
+  <path d="M8 6 C7.5 10, 8 16, 9 20 C9.5 22, 9 24, 8.5 26"
+        stroke="url(#fc1)" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M15.5 5 C15 10, 15.5 16, 16.5 21 C17 23, 16.5 25, 16 27"
+        stroke="url(#fc2)" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  <path d="M23 6 C22.5 10, 23 16, 24 20 C24.5 22, 24 24, 23.5 26"
+        stroke="url(#fc3)" stroke-width="3" fill="none" stroke-linecap="round"/>
+</svg>

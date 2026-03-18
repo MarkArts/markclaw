@@ -1,0 +1,13 @@
+node_modules
+dist
+.git
+.env
+.ssh
+store
+data
+logs
+groups/*/
+!groups/global/
+groups/global/SOUL.md
+groups/global/COMPANY.md
+groups/global/.env-shared

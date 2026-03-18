@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100" width="400" height="100">
+  <defs>
+    <linearGradient id="lbg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f1729"/>
+      <stop offset="100%" stop-color="#1a2744"/>
+    </linearGradient>
+    <linearGradient id="lc1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00d4aa"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <linearGradient id="lc2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="lc3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="textGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#e2e8f0"/>
+      <stop offset="100%" stop-color="#cbd5e1"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Icon section: rounded square with claw marks -->
+  <rect x="8" y="10" width="80" height="80" rx="18" fill="url(#lbg)"/>
+
+  <!-- Three claw slash marks in the icon -->
+  <!-- Left slash -->
+  <path d="M28 22 C27 27, 26 35, 27 43 C28 49, 30 55, 31 61 C31.5 64, 30 67, 29 70"
+        stroke="url(#lc1)" stroke-width="5" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Center slash -->
+  <path d="M46 19 C45 25, 44 34, 45 43 C46 50, 48 57, 49 63 C49.5 66, 48.5 69, 48 72"
+        stroke="url(#lc2)" stroke-width="5.5" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Right slash -->
+  <path d="M64 22 C63 27, 62 35, 63 43 C64 49, 66 55, 67 61 C67.5 64, 66 67, 65 70"
+        stroke="url(#lc3)" stroke-width="5" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Glow dots -->
+  <circle cx="29" cy="70" r="2.5" fill="#00d4aa" opacity="0.5"/>
+  <circle cx="48" cy="72" r="2.8" fill="#06b6d4" opacity="0.6"/>
+  <circle cx="65" cy="70" r="2.5" fill="#6366f1" opacity="0.5"/>
+
+  <!-- Text "MarkClaw" -->
+  <text x="108" y="62" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="42" font-weight="700" letter-spacing="-0.5" fill="url(#textGrad)">
+    Mark<tspan fill="url(#accentGrad)">Claw</tspan>
+  </text>
+
+  <!-- Subtle underline accent -->
+  <line x1="108" y1="72" x2="235" y2="72" stroke="url(#accentGrad)" stroke-width="2" opacity="0.3" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,19 @@
+services:
+  markclaw:
+    build: .
+    env_file: .env
+    environment:
+      - CONTAINER_IMAGE=markclaw-agent:latest
+    volumes:
+      # Docker socket — markclaw spawns agent containers on the host
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Persistent data
+      - ./store:/app/store
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./groups:/app/groups
+      # SSH keys for agents (generated during setup)
+      - ./.ssh:/app/.ssh:ro
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

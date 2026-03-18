@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f1729"/>
+      <stop offset="100%" stop-color="#1a2744"/>
+    </linearGradient>
+    <linearGradient id="claw1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00d4aa"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <linearGradient id="claw2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="claw3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="url(#bg)"/>
+  <!-- Three claw slash marks - diagonal strokes with tapered ends -->
+  <!-- Left slash -->
+  <path d="M16 12 C16 12, 14 16, 13 22 C12 28, 18 38, 20 44 C21 47, 19 50, 18 52"
+        stroke="url(#claw1)" stroke-width="4.5" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Center slash -->
+  <path d="M31 10 C31 10, 29 15, 28 22 C27 30, 33 40, 34 46 C34.5 49, 33 52, 32 54"
+        stroke="url(#claw2)" stroke-width="5" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Right slash -->
+  <path d="M46 12 C46 12, 44 16, 43 22 C42 28, 48 38, 50 44 C51 47, 49 50, 48 52"
+        stroke="url(#claw3)" stroke-width="4.5" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Subtle glow dots at tips -->
+  <circle cx="18" cy="52" r="2" fill="#00d4aa" opacity="0.6"/>
+  <circle cx="32" cy="54" r="2.2" fill="#06b6d4" opacity="0.7"/>
+  <circle cx="48" cy="52" r="2" fill="#6366f1" opacity="0.6"/>
+</svg>

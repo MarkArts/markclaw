@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.npm-cache/
+# Build output
+dist/
+
+# Local data & auth
+store/
+data/
+logs/
+
+# Groups - only track base structure and specific CLAUDE.md files
+groups/*
+!groups/main/
+!groups/global/
+groups/main/*
+groups/global/*
+!groups/global/*.md
+groups/global/SOUL.md
+groups/global/COMPANY.md
+!groups/main/CLAUDE.md
+
+# Secrets
+*.keys.json
+.env
+.ssh/
+
+# Temp files
+.tmp-*
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Skills system (local per-installation state)
+.markclaw/
+
+agents-sdk-docs
+soul.backup
+security_hardening_progress.txt

@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="spBg" x1="0" y1="0" x2="0.7" y2="1">
+      <stop offset="0%" stop-color="#0a0f1e"/>
+      <stop offset="40%" stop-color="#0f1729"/>
+      <stop offset="100%" stop-color="#162033"/>
+    </linearGradient>
+    <!-- Radial glow behind icon -->
+    <radialGradient id="glow" cx="0.5" cy="0.42" r="0.35">
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.12"/>
+      <stop offset="60%" stop-color="#3b82f6" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#0a0f1e" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Claw gradients -->
+    <linearGradient id="sc1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00d4aa"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <linearGradient id="sc2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="sc3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="spTextGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#f1f5f9"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+    <linearGradient id="spAccent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="spIconBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#131d36"/>
+      <stop offset="100%" stop-color="#1a2744"/>
+    </linearGradient>
+    <!-- Grid pattern for tech feel -->
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5" opacity="0.3"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="640" fill="url(#spBg)"/>
+
+  <!-- Subtle grid overlay -->
+  <rect width="1280" height="640" fill="url(#grid)" opacity="0.4"/>
+
+  <!-- Radial glow -->
+  <rect width="1280" height="640" fill="url(#glow)"/>
+
+  <!-- Decorative horizontal lines -->
+  <line x1="0" y1="180" x2="1280" y2="180" stroke="#1e3a5f" stroke-width="0.5" opacity="0.2"/>
+  <line x1="0" y1="460" x2="1280" y2="460" stroke="#1e3a5f" stroke-width="0.5" opacity="0.2"/>
+
+  <!-- Central icon: large rounded square with claw marks -->
+  <rect x="530" y="140" width="220" height="220" rx="48" fill="url(#spIconBg)"
+        stroke="#1e3a5f" stroke-width="1" opacity="0.9"/>
+
+  <!-- Three claw marks - large and bold -->
+  <!-- Left slash -->
+  <path d="M580 170 C578 185, 576 210, 578 235 C580 255, 585 270, 588 285 C589 292, 587 300, 585 310"
+        stroke="url(#sc1)" stroke-width="12" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Center slash -->
+  <path d="M635 162 C633 180, 631 208, 633 237 C635 258, 640 275, 643 290 C644 298, 642 306, 640 315"
+        stroke="url(#sc2)" stroke-width="13" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Right slash -->
+  <path d="M690 170 C688 185, 686 210, 688 235 C690 255, 695 270, 698 285 C699 292, 697 300, 695 310"
+        stroke="url(#sc3)" stroke-width="12" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Glow dots at claw tips -->
+  <circle cx="585" cy="310" r="5" fill="#00d4aa" opacity="0.5"/>
+  <circle cx="640" cy="315" r="5.5" fill="#06b6d4" opacity="0.6"/>
+  <circle cx="695" cy="310" r="5" fill="#6366f1" opacity="0.5"/>
+
+  <!-- "MarkClaw" title text -->
+  <text x="640" y="430" text-anchor="middle"
+        font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="72" font-weight="700" letter-spacing="-1" fill="url(#spTextGrad)">
+    Mark<tspan fill="url(#spAccent)">Claw</tspan>
+  </text>
+
+  <!-- Accent line under title -->
+  <line x1="520" y1="448" x2="760" y2="448" stroke="url(#spAccent)" stroke-width="2.5" opacity="0.35" stroke-linecap="round"/>
+
+  <!-- Subtitle -->
+  <text x="640" y="490" text-anchor="middle"
+        font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="26" font-weight="400" letter-spacing="4" fill="#94a3b8">
+    Personal AI Assistant
+  </text>
+
+  <!-- Bottom decorative dots -->
+  <circle cx="610" cy="540" r="3" fill="#00d4aa" opacity="0.3"/>
+  <circle cx="640" cy="540" r="3" fill="#06b6d4" opacity="0.4"/>
+  <circle cx="670" cy="540" r="3" fill="#6366f1" opacity="0.3"/>
+</svg>
