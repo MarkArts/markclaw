@@ -1589,8 +1589,12 @@ function handleSendMessage(
       const content = isWebUI ? message : '[via admin-ui, respond in ' + channel + '] ' + message;
 
       await initWriteDb();
-      getWriteDb!()
-        .prepare(
+      const wdb = getWriteDb!();
+      // Ensure chat entry exists (foreign key on messages.chat_jid → chats.jid)
+      wdb.prepare(
+        `INSERT OR IGNORE INTO chats (jid, name, last_message_time, channel, is_group) VALUES (?, ?, ?, ?, ?)`,
+      ).run(grp.jid, grp.folder, now, channel, 0);
+      wdb.prepare(
           'INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         )
         .run(msgId, grp.jid, 'admin-ui', 'Admin (Web UI)', content, now, 0, 0);

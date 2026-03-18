@@ -582,6 +582,7 @@ async function main(): Promise<void> {
       added_at: new Date().toISOString(),
       isMain: true,
     });
+    storeChatMetadata(defaultWebUIJid, new Date().toISOString(), 'Web UI', 'webui', false);
     logger.info('Created default Web UI session');
   }
 
