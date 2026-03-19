@@ -1078,46 +1078,6 @@ header .status .dot {
   white-space: nowrap;
 }
 
-/* Prompt input bar (above content) */
-.prompt-bar {
-  display: flex;
-  gap: 8px;
-  padding: 10px 24px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.prompt-bar input {
-  flex: 1;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-family: var(--font-display);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  outline: none;
-  transition: border-color 0.2s;
-}
-.prompt-bar input:focus { border-color: var(--accent); }
-.prompt-bar input::placeholder { color: var(--text-dim); }
-.prompt-bar .send-btn {
-  padding: 8px 18px;
-  font-size: 12px;
-  font-weight: 600;
-  background: var(--accent-dim);
-  border: 1px solid var(--accent);
-  border-radius: 8px;
-  color: var(--accent);
-  cursor: pointer;
-  font-family: var(--font-display);
-  letter-spacing: 0.3px;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-.prompt-bar .send-btn:hover { background: var(--accent); color: var(--bg); }
-.prompt-bar .send-btn:disabled { opacity: 0.4; cursor: default; }
-
 /* Session header bar */
 .session-header {
   padding: 8px 24px;
@@ -1206,18 +1166,6 @@ header .status .dot {
   padding: 1px 8px; font-family: var(--font-mono); font-size: 12px; color: var(--text);
 }
 
-/* Awaiting input global badge */
-.awaiting-badge {
-  display: none; background: var(--accent-dim); color: var(--accent);
-  font-size: 10px; padding: 2px 8px; border-radius: 10px;
-  font-family: var(--font-mono); font-weight: 500; animation: pulse 2s infinite;
-}
-.awaiting-badge.show { display: inline-flex; align-items: center; gap: 4px; }
-
-/* Inbox tab count */
-.inbox-count { display: none; background: var(--accent); color: var(--bg); font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 600; margin-left: 4px; }
-.inbox-count.show { display: inline; }
-
 /* Work tab badge */
 .work-count { display: none; background: var(--red); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 8px; font-weight: 600; margin-left: 4px; }
 .work-count.show { display: inline; }
@@ -1295,19 +1243,6 @@ header .status .dot {
 .hk-actions { display: flex; gap: 8px; margin-top: 12px; align-items: center; }
 .hk-empty { color: var(--text-dim); font-size: 13px; padding: 12px 0; text-align: center; }
 
-/* Inbox items */
-.inbox-item { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 8px; cursor: pointer; transition: border-color 0.2s; }
-.inbox-item:hover { border-color: var(--accent); }
-.inbox-item .inbox-name { font-weight: 500; font-size: 14px; display: flex; align-items: center; gap: 8px; }
-.inbox-reason { font-size: 11px; color: var(--accent); font-family: var(--font-mono); font-weight: 400; }
-.inbox-item .inbox-activity { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-style: italic; }
-.inbox-item .inbox-meta { font-size: 11px; color: var(--text-dim); margin-top: 6px; display: flex; gap: 12px; align-items: center; }
-.inbox-item .inbox-actions { display: flex; gap: 8px; margin-top: 8px; }
-.inbox-item .inbox-actions button { font-size: 11px; padding: 3px 10px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-muted); cursor: pointer; font-family: var(--font-mono); }
-.inbox-item .inbox-actions button:hover { border-color: var(--border-bright); color: var(--text); }
-.inbox-item .inbox-actions .btn-primary { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-.inbox-empty { text-align: center; color: var(--text-dim); padding: 60px 20px; }
-.inbox-empty .inbox-empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
 
 /* Sidebar thread nesting */
 .sidebar-thread-group { margin-left: 12px; padding-left: 10px; border-left: 2px solid var(--border); }
@@ -1339,7 +1274,6 @@ header .status .dot {
     <div class="logo-mark">NC</div>
     <h1>MarkClaw <span>Monitor</span></h1>
   </div>
-  <span class="awaiting-badge" id="awaiting-badge" title="Agents waiting for input" style="cursor:pointer" onclick="switchTab('inbox')"></span>
   <div class="status">
     <span class="dot"></span>
     <span id="status-text">connected</span>
@@ -1348,7 +1282,6 @@ header .status .dot {
 </header>
 
 <div class="tabs">
-  <div class="tab" data-tab="inbox">Inbox <span class="inbox-count" id="inbox-count"></span></div>
   <div class="tab" data-tab="work">Work <span class="work-count" id="work-count"></span></div>
   <div class="tab active" data-tab="transcript">Transcript</div>
   <div class="tab" data-tab="messages">Messages</div>
@@ -1379,11 +1312,6 @@ header .status .dot {
       <span id="btn-deactivate" style="display:none"></span>
     </div>
     <div class="session-header" id="session-header" style="display:none"></div>
-
-    <div class="prompt-bar" id="prompt-bar" style="display:none">
-      <input type="text" id="prompt-input" placeholder="Send a message..." autocomplete="off">
-      <button class="send-btn" id="prompt-send-btn" onclick="sendPrompt()">Send</button>
-    </div>
 
     <div class="content" id="content">
       <div class="loading">select a session</div>
@@ -1594,83 +1522,9 @@ function selectGroup(folder) {
   document.getElementById('sidebar-overlay').classList.remove('open');
 }
 
-function getInboxItems() {
-  const now = Date.now() / 1000;
-  const dismissed = JSON.parse(localStorage.getItem('nc-inbox-dismissed') || '{}');
-  return groupsCache.filter(g => {
-    // Backend detected the agent is requesting user action
-    if (!g.needs_user_action) return false;
-    // Container is NOT running — agent finished processing
-    const isRunning = g.transcript_modified && (now - g.transcript_modified) < 120;
-    if (isRunning) return false;
-    // Had activity in the last 48h (not stale)
-    if (!g.transcript_modified || (now - g.transcript_modified) > 48 * 3600) return false;
-    // Not dismissed by user
-    if (dismissed[g.folder] && dismissed[g.folder] > g.transcript_modified) return false;
-    return true;
-  });
-}
-
-function loadInbox() {
-  const content = document.getElementById('content');
-  const items = getInboxItems();
-  if (items.length === 0) {
-    content.innerHTML = '<div class="inbox-empty"><div class="inbox-empty-icon">&#9745;</div>Nothing waiting for you</div>';
-    return;
-  }
-  const now = Date.now() / 1000;
-  let html = '<div style="max-width:800px;margin:0 auto;width:100%;padding:16px">';
-  html += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;font-family:var(--font-mono)">' + items.length + ' session' + (items.length === 1 ? '' : 's') + ' waiting for you</div>';
-  for (const g of items) {
-    const name = g.display_name || g.name || g.folder;
-    const age = g.transcript_modified ? formatDuration(now - g.transcript_modified) + ' ago' : '';
-    const tokens = (g.total_input_tokens || 0) + (g.total_output_tokens || 0);
-    const cost = g.cost != null && g.cost > 0.01 ? fmtCost(g.cost) : '';
-    html += '<div class="inbox-item" onclick="switchTab(\'transcript\'); selectGroup(\'' + escHtml(g.folder) + '\')">';
-    html += '<div class="inbox-name">' + escHtml(name) + (g.is_main ? ' <span style="color:var(--accent);font-size:10px;font-family:var(--font-mono)">MAIN</span>' : '') + (g.user_action_reason ? ' <span class="inbox-reason">' + escHtml(g.user_action_reason) + '</span>' : '') + '</div>';
-    if (g.last_activity) html += '<div class="inbox-activity">' + escHtml(g.last_activity) + '</div>';
-    html += '<div class="inbox-meta">';
-    if (age) html += '<span>' + age + '</span>';
-    if (g.message_count) html += '<span>' + g.message_count + ' msgs</span>';
-    if (tokens > 0) html += '<span>' + formatTokens(tokens) + ' tokens</span>';
-    if (cost) html += '<span style="color:var(--accent)">' + cost + '</span>';
-    html += '</div>';
-    html += '<div class="inbox-actions">';
-    html += '<button class="btn-primary" onclick="event.stopPropagation(); switchTab(\'transcript\'); selectGroup(\'' + escHtml(g.folder) + '\')">Open</button>';
-    if (g.user_action_reason && g.user_action_reason.includes('retries')) {
-      html += '<button onclick="event.stopPropagation(); switchTab(\'ratelimits\')">View Rate Limits</button>';
-    }
-    html += '<button onclick="event.stopPropagation(); dismissInbox(\'' + escHtml(g.folder) + '\')">Dismiss</button>';
-    html += '</div>';
-    html += '</div>';
-  }
-  html += '</div>';
-  content.innerHTML = html;
-}
-
-function dismissInbox(folder) {
-  const dismissed = JSON.parse(localStorage.getItem('nc-inbox-dismissed') || '{}');
-  dismissed[folder] = Date.now() / 1000;
-  localStorage.setItem('nc-inbox-dismissed', JSON.stringify(dismissed));
-  loadInbox();
-  updateInboxCount();
-}
-
-function updateInboxCount() {
-  const count = getInboxItems().length;
-  const el = document.getElementById('inbox-count');
-  el.className = 'inbox-count' + (count > 0 ? ' show' : '');
-  el.textContent = count > 0 ? count : '';
-  // Also update the header badge
-  const badge = document.getElementById('awaiting-badge');
-  badge.className = 'awaiting-badge' + (count > 0 ? ' show' : '');
-  badge.textContent = count > 0 ? count + ' waiting' : '';
-}
-
 function loadContent() {
   if (currentTab !== 'transcript') stopLive();
   // Agents, Schedules, Costs, Search don't need a selected group
-  if (currentTab === 'inbox') { loadInbox(); return; }
   if (currentTab === 'work') { loadWork(); return; }
   if (currentTab === 'agents') { loadAgents(); return; }
   if (currentTab === 'schedules') { loadSchedules(); return; }
@@ -2461,24 +2315,21 @@ function renderDailyChart(days) {
 // Admin message sending
 function updateInputBar() {
   const bar = document.getElementById('msg-input-bar');
-  const promptBar = document.getElementById('prompt-bar');
   const isTranscriptOrMessages = currentTab === 'transcript' || currentTab === 'messages';
 
-  // Show bottom admin-ui bar only for existing groups
-  const showInput = currentGroup && isTranscriptOrMessages;
-  bar.style.display = showInput ? 'flex' : 'none';
-  if (showInput) {
+  bar.style.display = isTranscriptOrMessages ? 'flex' : 'none';
+  if (isTranscriptOrMessages) {
     const tag = document.getElementById('msg-source-tag');
-    tag.textContent = 'ADMIN-UI';
-    tag.title = 'Message sent via admin UI — agent will respond in the original channel';
-  }
-
-  // Show top prompt bar on transcript tab (for new sessions when no group, or send to current group)
-  const showPrompt = currentTab === 'transcript';
-  promptBar.style.display = showPrompt ? 'flex' : 'none';
-  if (showPrompt) {
-    const input = document.getElementById('prompt-input');
-    input.placeholder = currentGroup ? 'Send a message to this session...' : 'Start a new session...';
+    const input = document.getElementById('msg-input');
+    if (currentGroup) {
+      tag.textContent = 'ADMIN-UI';
+      tag.title = 'Message sent via admin UI — agent will respond in the original channel';
+      input.placeholder = 'Send a message to this session...';
+    } else {
+      tag.textContent = 'NEW';
+      tag.title = 'Start a new web UI session';
+      input.placeholder = 'Start a new session...';
+    }
   }
 }
 
@@ -2501,51 +2352,12 @@ async function sendAdminMessage() {
   const input = document.getElementById('msg-input');
   const btn = document.getElementById('msg-send-btn');
   const message = input.value.trim();
-  if (!message || !currentGroup) return;
-
-  btn.disabled = true;
-  btn.textContent = 'Sending...';
-  try {
-    const res = await fetch('/api/send-message', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ group: currentGroup, message }),
-    });
-    const data = await res.json();
-    if (data.ok) {
-      input.value = '';
-      showToast('Message sent', 'success');
-      setTimeout(() => loadContent(), 500);
-    } else {
-      showToast('Failed: ' + (data.error || 'unknown error'), 'error');
-    }
-  } catch(e) {
-    showToast('Error: ' + e.message, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Send';
-  }
-}
-
-// Handle Enter key in input
-document.getElementById('msg-input').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendAdminMessage();
-  }
-});
-
-async function sendPrompt() {
-  const input = document.getElementById('prompt-input');
-  const btn = document.getElementById('prompt-send-btn');
-  const message = input.value.trim();
   if (!message) return;
 
   btn.disabled = true;
   btn.textContent = 'Sending...';
   try {
     if (currentGroup) {
-      // Send to existing group
       const res = await fetch('/api/send-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2560,7 +2372,6 @@ async function sendPrompt() {
         showToast('Failed: ' + (data.error || 'unknown error'), 'error');
       }
     } else {
-      // New session flow
       const res = await fetch('/api/start-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2585,10 +2396,11 @@ async function sendPrompt() {
   }
 }
 
-document.getElementById('prompt-input').addEventListener('keydown', (e) => {
+// Handle Enter key in input
+document.getElementById('msg-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    sendPrompt();
+    sendAdminMessage();
   }
 });
 
@@ -2698,7 +2510,7 @@ function readHash() {
   const hash = location.hash.replace(/^#/, '');
   if (!hash) return;
   const [tab, group] = hash.split('/');
-  if (tab && ['inbox','work','transcript','messages','logs','agents','schedules','costs','ratelimits','search'].includes(tab)) {
+  if (tab && ['work','transcript','messages','logs','agents','schedules','costs','ratelimits','search'].includes(tab)) {
     switchTab(tab);
   }
   if (group) {
@@ -2761,16 +2573,6 @@ setInterval(() => {
   if (groupsCache.length > 0) loadGroups();
 }, 30000);
 
-// --- Auto-refresh inbox every 30s ---
-setInterval(() => {
-  if (groupsCache.length > 0) {
-    updateInboxCount();
-    if (currentTab === 'inbox') loadInbox();
-  }
-}, 30000);
-
-// --- #14: Global awaiting-input badge (delegates to inbox count) ---
-function updateAwaitingBadge() { updateInboxCount(); }
 
 // --- #15: Theme toggle ---
 function toggleTheme() {
@@ -2797,7 +2599,6 @@ document.addEventListener('keydown', (e) => {
   if (key === 'r') { refresh(); return; }
 
   // Number keys for tabs
-  if (key === 'i') { switchTab('inbox'); return; }
   if (key === 'w') { switchTab('work'); return; }
   const tabMap = {'1':'transcript','2':'messages','3':'logs','4':'agents','5':'schedules','6':'costs','7':'ratelimits'};
   if (tabMap[key]) { switchTab(tabMap[key]); return; }
@@ -3456,7 +3257,7 @@ function renderRateLimits(data) {
   html += '<p style="color:var(--text-dim);font-size:12px;line-height:1.6;font-family:var(--font-mono);margin:0">';
   html += 'When a container fails (rate limit, API error, crash), MarkClaw retries with exponential backoff: ';
   html += '5s, 10s, 20s, 40s, 80s (5 attempts total). ';
-  html += 'If all retries fail, the messages are dropped and the session appears in the Inbox. ';
+  html += 'If all retries fail, the messages are dropped. ';
   html += 'The next incoming message will trigger a fresh attempt.';
   html += '</p></div>';
 
@@ -3675,7 +3476,6 @@ function exportCostsCsv(data) {
   <div class="kbd-help-panel">
     <h2>Keyboard Shortcuts</h2>
     <div class="kbd-row"><span>Navigate sessions</span><kbd>j</kbd> / <kbd>k</kbd></div>
-    <div class="kbd-row"><span>Inbox</span><kbd>i</kbd></div>
     <div class="kbd-row"><span>Work</span><kbd>w</kbd></div>
     <div class="kbd-row"><span>Transcript</span><kbd>1</kbd></div>
     <div class="kbd-row"><span>Messages</span><kbd>2</kbd></div>

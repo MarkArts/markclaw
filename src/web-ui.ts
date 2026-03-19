@@ -31,7 +31,6 @@ const WEB_UI_PORT = parseInt(process.env.WEB_UI_PORT || '8080', 10);
 const SESSIONS_DIR = path.join(DATA_DIR, 'sessions');
 const LOGS_DIR = path.resolve(process.cwd(), 'logs');
 const PUBLIC_DIR = path.resolve(process.cwd(), 'public');
-const MAX_RETRIES_DISPLAY = 5; // Must match MAX_RETRIES in group-queue.ts
 const DB_PATH = path.join(STORE_DIR, 'messages.db');
 const GROUPS_DIR = path.resolve(process.cwd(), 'groups');
 const GITHUB_ORG = process.env.GITHUB_ORG || '';
@@ -228,8 +227,6 @@ interface TranscriptStats {
   totalOutputTokens: number;
   lastEntryType: string | null;
   lastActivity: string | null;
-  needsUserAction: boolean;
-  userActionReason: string | null;
 }
 
 function getTranscriptStats(filepath: string): TranscriptStats {
@@ -239,8 +236,6 @@ function getTranscriptStats(filepath: string): TranscriptStats {
     totalOutputTokens: 0,
     lastEntryType: null,
     lastActivity: null,
-    needsUserAction: false,
-    userActionReason: null,
   };
   const content = fs.readFileSync(filepath, 'utf-8');
   const lines = content.split('\n');
@@ -269,9 +264,6 @@ function getTranscriptStats(filepath: string): TranscriptStats {
 
   // Extract last activity from the tail of the transcript
   stats.lastActivity = extractLastActivity(lines);
-  const actionResult = detectNeedsUserAction(lines);
-  stats.needsUserAction = actionResult.needed;
-  stats.userActionReason = actionResult.reason;
   return stats;
 }
 
@@ -354,155 +346,6 @@ function summarizeToolUse(name: string, input: Record<string, any>): string {
         return name.replace('mcp__markclaw__', '').replace(/_/g, ' ');
       return name.replace(/_/g, ' ').slice(0, 40);
   }
-}
-
-/**
- * Detect if the last assistant message is requesting user action (not just a task completion).
- * Looks for: questions, URLs to visit, explicit requests to do something, SSO prompts, PR reviews, etc.
- */
-function detectNeedsUserAction(lines: string[]): {
-  needed: boolean;
-  reason: string | null;
-} {
-  const no = { needed: false, reason: null };
-  // Find the last assistant entry
-  for (let i = lines.length - 1; i >= Math.max(0, lines.length - 10); i--) {
-    const line = lines[i]?.trim();
-    if (!line) continue;
-    let entry: any;
-    try {
-      entry = JSON.parse(line);
-    } catch {
-      continue;
-    }
-    if (entry.type !== 'assistant') continue;
-
-    const content = entry.message?.content;
-    if (!Array.isArray(content)) return no;
-
-    // Collect all text from the last assistant message
-    let fullText = '';
-    for (const block of content) {
-      if (block.type === 'text' && block.text) fullText += block.text + '\n';
-    }
-    if (!fullText.trim()) return no;
-
-    // Patterns that indicate the agent is requesting user action, with human-readable reasons
-    const actionPatterns: Array<{ pattern: RegExp; reason: string }> = [
-      // Authentication / authorization
-      {
-        pattern: /\bsso\s+(login|link|url|auth)/i,
-        reason: 'SSO authentication needed',
-      },
-      {
-        pattern: /\bverification\s+(url|link|code)\b/i,
-        reason: 'Verification needed',
-      },
-      {
-        pattern: /\bplease\s+(authorize|authenticate)\b/i,
-        reason: 'Authentication needed',
-      },
-      // Blocked on external events (CI, merge, deploy, approval)
-      { pattern: /\bwaiting for\s+ci\b/i, reason: 'Blocked on CI' },
-      {
-        pattern:
-          /\bwaiting for\s+(the\s+)?(pipeline|build|checks?|tests?|actions?)\b/i,
-        reason: 'Blocked on CI',
-      },
-      {
-        pattern: /\bwaiting for\s+(the\s+)?(pr|pull request|merge)\b/i,
-        reason: 'Waiting for merge',
-      },
-      {
-        pattern: /\bwaiting for\s+(the\s+)?(deploy|deployment|release)\b/i,
-        reason: 'Waiting for deploy',
-      },
-      {
-        pattern:
-          /\bonce\s+(it'?s|the\s+pr\s+is|ci|the\s+build\s+is)\s+(merged|passing|complete|done|deployed)\b/i,
-        reason: 'Blocked — needs merge/CI',
-      },
-      {
-        pattern: /\bonce\s+(merged|deployed|approved|released)\b/i,
-        reason: 'Blocked — needs merge/CI',
-      },
-      {
-        pattern:
-          /\bafter\s+(it'?s|the\s+pr\s+is|ci)\s+(merged|passing|complete)\b/i,
-        reason: 'Blocked — needs merge/CI',
-      },
-      // Direct user action requests
-      {
-        pattern:
-          /\bwaiting for\s+(you|your|approval|confirmation|input|response)\b/i,
-        reason: 'Waiting for your response',
-      },
-      {
-        pattern:
-          /\breview\s+(the|this)\s+(pr|pull request|merge request|changes)\b/i,
-        reason: 'PR review requested',
-      },
-      {
-        pattern: /\bplease\s+(visit|open|click|go to|navigate)\b/i,
-        reason: 'Link needs your attention',
-      },
-      {
-        pattern: /\bplease\s+(review|approve|confirm|check|verify|merge)\b/i,
-        reason: 'Approval needed',
-      },
-      {
-        pattern: /\byou\s+(need to|must)\b/i,
-        reason: 'Action required from you',
-      },
-      {
-        pattern: /\byou\s+(should|can now|will need to)\b/i,
-        reason: 'Follow-up suggested',
-      },
-      {
-        pattern: /\bopen\s+(this|the)\s+(url|link)\b/i,
-        reason: 'Link needs your attention',
-      },
-      // Questions / decisions
-      { pattern: /\bcould you\b/i, reason: 'Question for you' },
-      { pattern: /\bwould you\b/i, reason: 'Question for you' },
-      { pattern: /\bcan you\b/i, reason: 'Question for you' },
-      { pattern: /\bdo you want\b/i, reason: 'Decision needed' },
-      { pattern: /\bshall i\b/i, reason: 'Decision needed' },
-      { pattern: /\blet me know\b/i, reason: 'Waiting for your response' },
-      {
-        pattern: /\bhow (?:do you|would you|should i)\b/i,
-        reason: 'Question for you',
-      },
-      { pattern: /\?\s*$/m, reason: 'Question for you' },
-    ];
-
-    // Patterns that indicate task completion (override the above)
-    const completionPatterns = [
-      /\b(?:done|completed|finished|all set|all good)\b.*[.!]\s*$/im,
-      /\bsuccessfully\b/i,
-      /\bhere(?:'s| is) (?:the|a) summary\b/i,
-      /\bresults posted\b/i,
-      /\bis now installed\b/i,
-    ];
-
-    let matchedReason: string | null = null;
-    for (const { pattern, reason } of actionPatterns) {
-      if (pattern.test(fullText)) {
-        matchedReason = reason;
-        break;
-      }
-    }
-
-    if (matchedReason) {
-      for (const p of completionPatterns) {
-        if (p.test(fullText)) return no;
-      }
-      return { needed: true, reason: matchedReason };
-    }
-
-    return no;
-  }
-  return no;
 }
 
 function describeBash(cmd: string): string {
@@ -850,65 +693,8 @@ function handleGroups(res: http.ServerResponse): void {
         row.total_output_tokens = stats.totalOutputTokens;
         row.last_entry_type = stats.lastEntryType;
         row.last_activity = stats.lastActivity;
-        row.needs_user_action = stats.needsUserAction;
-        row.user_action_reason = stats.userActionReason;
       } catch {
         /* file may have been removed */
-      }
-    }
-    // Also check for unanswered user messages with questions (? in content)
-    // Only for main DM sessions — thread sessions have multi-user conversations
-    // where a ? is often directed at other people, not the agent.
-    if (!row.needs_user_action && g.is_main) {
-      try {
-        const lastMsg = db
-          .prepare(
-            'SELECT content, is_from_me, is_bot_message, timestamp FROM messages WHERE chat_jid = ? ORDER BY timestamp DESC LIMIT 1',
-          )
-          .get(g.jid) as
-          | {
-              content: string;
-              is_from_me: number;
-              is_bot_message: number;
-              timestamp: string;
-            }
-          | undefined;
-        if (
-          lastMsg &&
-          !lastMsg.is_from_me &&
-          !lastMsg.is_bot_message &&
-          lastMsg.content?.includes('?')
-        ) {
-          // Only if it's recent (last 48h)
-          const msgAge =
-            (Date.now() - new Date(lastMsg.timestamp).getTime()) / 1000;
-          if (msgAge < 48 * 3600) {
-            row.needs_user_action = true;
-            row.user_action_reason = 'Unanswered message';
-            if (!row.last_activity)
-              row.last_activity = lastMsg.content.slice(0, 200);
-          }
-        }
-      } catch {
-        /* best-effort */
-      }
-    }
-    // Check for recent max-retries failures
-    if (!row.needs_user_action) {
-      try {
-        const recentEvents = readRetryEvents(48 * 3600); // last 48h
-        const exhausted = recentEvents.filter(
-          (e) => e.type === 'max_retries_exceeded' && e.groupJid === g.jid,
-        );
-        if (exhausted.length > 0) {
-          row.needs_user_action = true;
-          row.user_action_reason = `Failed after ${MAX_RETRIES_DISPLAY} retries`;
-          if (!row.last_activity)
-            row.last_activity =
-              'Agent hit rate limit or error — messages dropped';
-        }
-      } catch {
-        /* best-effort */
       }
     }
     // Compute cost for this group from transcript

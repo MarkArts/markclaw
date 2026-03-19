@@ -80,6 +80,12 @@ ANTHROPIC_API_KEY=sk-ant-...   # or CLAUDE_CODE_OAUTH_TOKEN
 ANTHROPIC_MODEL=claude-sonnet-4-6
 ```
 
+Detect the system timezone and suggest it as the default:
+```bash
+timedatectl show --property=Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null || echo "UTC"
+```
+Ask the user to confirm or provide their timezone (e.g. `Europe/Amsterdam`, `America/New_York`). Write it to `.env` as `TZ=<timezone>`.
+
 Also ask if they want to set `GITHUB_ORG` and `JIRA_SITE` for the web UI dashboard (optional).
 
 ## 7. Generate SSH Keys
