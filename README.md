@@ -4,9 +4,8 @@ A personal Claude assistant. You talk to it via Slack or the web UI, it runs Cla
 
 Opinionated for a single-user production setup.
 
-![Transcript view](screenshots/transcript.png)
-![Cost tracking](screenshots/costs.png)
-![Scheduled tasks](screenshots/schedules.png)
+| ![Transcript](screenshots/transcript.png) | ![Costs](screenshots/costs.png) | ![Schedules](screenshots/schedules.png) |
+|:---:|:---:|:---:|
 
 ## What it does
 
