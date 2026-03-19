@@ -232,6 +232,22 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
       logger.info({ group: group.name }, `Agent output: ${raw.slice(0, 200)}`);
       hadAgentOutput = true;
 
+      // For web UI sessions: auto-store agent stdout results as messages.
+      // Unlike Slack sessions where agents use the send_message MCP tool,
+      // web UI sessions may produce output via stdout only.
+      if (isWebUI && raw.trim()) {
+        storeMessageDirect({
+          id: 'webui-resp-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+          chat_jid: chatJid,
+          sender: ASSISTANT_NAME,
+          sender_name: ASSISTANT_NAME,
+          content: raw,
+          timestamp: new Date().toISOString(),
+          is_from_me: true,
+          is_bot_message: true,
+        });
+      }
+
       // Only reset idle timer on actual results, not session-update markers (result: null)
       resetIdleTimer();
     }
@@ -659,6 +675,10 @@ async function main(): Promise<void> {
   });
   startWebUI({
     routeOutbound: (jid, text) => routeOutbound(channels, jid, text),
+    registerGroup,
+    enqueueMessageCheck: (jid) => queue.enqueueMessageCheck(jid),
+    storeChatMetadata: (jid, ts, name?, channel?, isGroup?) =>
+      storeChatMetadata(jid, ts, name, channel, isGroup),
   });
   queue.setProcessMessagesFn(processGroupMessages);
   queue.onMaxRetries((groupJid) => {

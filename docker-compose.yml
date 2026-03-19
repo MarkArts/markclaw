@@ -6,13 +6,9 @@ services:
         required: false
     environment:
       - CONTAINER_IMAGE=markclaw-agent:latest
-    # Podman inside the container needs these for spawning agent containers
-    devices:
-      - /dev/fuse
-    security_opt:
-      - label=disable
-    cap_add:
-      - SYS_ADMIN
+    # Podman-in-Docker requires privileged for cgroup access and keyring creation.
+    # This is a single-user personal tool behind a VPN — not exposed to the internet.
+    privileged: true
     volumes:
       # Persistent data
       - ./store:/app/store
@@ -21,6 +17,10 @@ services:
       - ./groups:/app/groups
       # Podman container storage (persists pulled/loaded images)
       - markclaw-containers:/var/lib/containers/storage
+      # Claude OAuth credentials (required — run `claude /login` on host first)
+      - ~/.claude:/root/.claude:ro
+      # Shared Nix store (optional — enables nix-shell in agent containers)
+      - /nix:/nix:ro
     ports:
       - "8080:8080"
     restart: unless-stopped

@@ -1633,28 +1633,57 @@ function handleStartSession(
       const displayName = name || `WebUI ${new Date(ts).toLocaleString()}`;
       const now = new Date().toISOString();
 
-      // Register the group in the DB
-      await initWriteDb();
-      const wdb = getWriteDb!();
-      wdb.prepare(
-        `INSERT OR REPLACE INTO registered_groups (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger, is_main, parent_folder)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).run(jid, displayName, folder, '.*', now, null, 0, 0, null);
+      const groupData = {
+        name: displayName,
+        folder,
+        trigger: '.*',
+        added_at: now,
+        requiresTrigger: false,
+        isMain: false as const,
+      };
 
-      // Create the groups directory
-      const groupDir = path.join(GROUPS_DIR, folder);
-      fs.mkdirSync(path.join(groupDir, 'logs'), { recursive: true });
+      // Register in orchestrator's in-memory state first (so the message loop
+      // can pick up the initial message immediately). Falls back to DB-only
+      // if the callback isn't wired up (e.g. tests).
+      if (registerGroupFn) {
+        registerGroupFn(jid, groupData);
+      } else {
+        // DB-only fallback (won't be processed until restart)
+        await initWriteDb();
+        const wdb = getWriteDb!();
+        wdb.prepare(
+          `INSERT OR REPLACE INTO registered_groups (jid, name, folder, trigger_pattern, added_at, container_config, requires_trigger, is_main, parent_folder)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(jid, displayName, folder, '.*', now, null, 0, 0, null);
+
+        // Create the groups directory
+        const groupDir = path.join(GROUPS_DIR, folder);
+        fs.mkdirSync(path.join(groupDir, 'logs'), { recursive: true });
+      }
 
       // Store chat metadata
-      wdb.prepare(
-        `INSERT OR REPLACE INTO chats (jid, name, last_message_time, channel, is_group) VALUES (?, ?, ?, ?, ?)`,
-      ).run(jid, displayName, now, 'webui', 1);
+      if (storeChatMetadataFn) {
+        storeChatMetadataFn(jid, now, displayName, 'webui', true);
+      } else {
+        await initWriteDb();
+        const wdb = getWriteDb!();
+        wdb.prepare(
+          `INSERT OR REPLACE INTO chats (jid, name, last_message_time, channel, is_group) VALUES (?, ?, ?, ?, ?)`,
+        ).run(jid, displayName, now, 'webui', 1);
+      }
 
       // Store the initial message
+      await initWriteDb();
+      const wdb = getWriteDb!();
       const msgId = 'webui-' + ts + '-' + Math.random().toString(36).slice(2, 8);
       wdb.prepare(
         `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(msgId, jid, 'webui-user', 'User (Web UI)', prompt, now, 0, 0);
+
+      // Trigger message processing for the new session
+      if (enqueueMessageCheckFn) {
+        enqueueMessageCheckFn(jid);
+      }
 
       logger.info({ jid, folder, msgId }, 'WebUI session started');
       jsonResponse(res, { group: folder, jid });
@@ -3590,10 +3619,45 @@ function formatAge(secs: number): string {
 let routeOutboundFn: ((jid: string, text: string) => Promise<void>) | null =
   null;
 
+// Callbacks for registering new sessions in the orchestrator's in-memory state.
+// Without these, sessions created via the web UI would only exist in the DB and
+// never be picked up by the message loop.
+let registerGroupFn:
+  | ((
+      jid: string,
+      group: import('./types.js').RegisteredGroup,
+    ) => void)
+  | null = null;
+let enqueueMessageCheckFn: ((jid: string) => void) | null = null;
+let storeChatMetadataFn:
+  | ((
+      jid: string,
+      timestamp: string,
+      name?: string,
+      channel?: string,
+      isGroup?: boolean,
+    ) => void)
+  | null = null;
+
 export function startWebUI(opts?: {
   routeOutbound?: (jid: string, text: string) => Promise<void>;
+  registerGroup?: (
+    jid: string,
+    group: import('./types.js').RegisteredGroup,
+  ) => void;
+  enqueueMessageCheck?: (jid: string) => void;
+  storeChatMetadata?: (
+    jid: string,
+    timestamp: string,
+    name?: string,
+    channel?: string,
+    isGroup?: boolean,
+  ) => void;
 }): void {
   if (opts?.routeOutbound) routeOutboundFn = opts.routeOutbound;
+  if (opts?.registerGroup) registerGroupFn = opts.registerGroup;
+  if (opts?.enqueueMessageCheck) enqueueMessageCheckFn = opts.enqueueMessageCheck;
+  if (opts?.storeChatMetadata) storeChatMetadataFn = opts.storeChatMetadata;
   // Ensure public dir exists
   if (!fs.existsSync(PUBLIC_DIR)) {
     logger.warn(

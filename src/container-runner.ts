@@ -2,7 +2,7 @@
  * Container Runner for MarkClaw
  * Spawns agent execution in containers and handles IPC
  */
-import { ChildProcess, exec, spawn } from 'child_process';
+import { ChildProcess, exec, execSync, spawn } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -162,10 +162,9 @@ function buildVolumeMounts(
     mountGlobalDir(mounts);
   }
 
-  // Shared AWS config — mount main group's .aws to ~/.aws for all containers.
+  // Shared AWS config — mount a shared .aws dir to ~/.aws for all containers.
   // SSO cache is writable so any session can auth and all others benefit.
-  const mainGroupDir = resolveGroupFolderPath('slack_main');
-  const awsDir = path.join(mainGroupDir, '.aws');
+  const awsDir = path.join(DATA_DIR, 'shared', 'aws');
   fs.mkdirSync(awsDir, { recursive: true });
   mounts.push({
     hostPath: awsDir,
@@ -337,6 +336,33 @@ function buildVolumeMounts(
       'nix-profiles',
     );
     fs.mkdirSync(nixProfileDir, { recursive: true });
+
+    // Seed the profile from the host user's nix profile on first run.
+    // This ensures nix-shell and other host-installed nix tools are on PATH
+    // immediately without requiring a manual `nix-env -i` in each new session.
+    const nixProfileLink = path.join(nixProfileDir, 'profile');
+    if (!fs.existsSync(nixProfileLink)) {
+      const hostProfile = path.join(
+        os.homedir(),
+        '.local',
+        'state',
+        'nix',
+        'profiles',
+        'profile',
+      );
+      try {
+        // Resolve the full symlink chain (profile → profile-N-link → /nix/store/...)
+        const target = fs.realpathSync(hostProfile);
+        fs.symlinkSync(target, nixProfileLink);
+        logger.debug(
+          { group: group.folder, target },
+          'Seeded nix profile from host',
+        );
+      } catch {
+        // Host may not have a nix profile — that's fine
+      }
+    }
+
     mounts.push({
       hostPath: nixProfileDir,
       containerPath: '/home/node/.local/state/nix/profiles',
@@ -446,7 +472,13 @@ function buildContainerArgs(
   // Mount Docker socket for agent containers (only when using Docker, not Podman)
   if (CONTAINER_RUNTIME_BIN === 'docker' && fs.existsSync('/var/run/docker.sock')) {
     args.push('-v', '/var/run/docker.sock:/var/run/docker.sock');
-    args.push('--group-add', '993');
+    // Auto-detect docker group so the non-root user can access the socket
+    try {
+      const stat = fs.statSync('/var/run/docker.sock');
+      args.push('--group-add', String(stat.gid));
+    } catch {
+      args.push('--group-add', '993');
+    }
     args.push('-e', 'DOCKER_HOST=unix:///var/run/docker.sock');
   }
 
@@ -476,6 +508,27 @@ export async function runContainerAgent(
   fs.mkdirSync(groupDir, { recursive: true });
 
   const mounts = buildVolumeMounts(group, input.isMain);
+
+  // When running as root (e.g. inside Docker Compose), ensure all writable
+  // mount directories are accessible to the agent container's node user (UID 1000).
+  // Uses chmod 0777 recursively since chown on the top-level dir doesn't cover
+  // subdirectories created by prior runs.
+  if (process.getuid?.() === 0) {
+    for (const mount of mounts) {
+      if (mount.readonly) continue;
+      try {
+        const stat = fs.statSync(mount.hostPath);
+        if (stat.isDirectory() && (stat.mode & 0o777) !== 0o777) {
+          execSync(`chmod -R 777 ${JSON.stringify(mount.hostPath)}`, {
+            stdio: 'pipe',
+            timeout: 5000,
+          });
+        }
+      } catch {
+        // File may not exist yet or be a special path — skip
+      }
+    }
+  }
   const safeName = group.folder.replace(/[^a-zA-Z0-9-]/g, '-');
   const containerName = `markclaw-${safeName}-${Date.now()}`;
   const containerArgs = buildContainerArgs(
