@@ -4,6 +4,10 @@ A personal Claude assistant. You talk to it via Slack or the web UI, it runs Cla
 
 Opinionated for a single-user production setup.
 
+![Transcript view](screenshots/transcript.png)
+![Cost tracking](screenshots/costs.png)
+![Scheduled tasks](screenshots/schedules.png)
+
 ## What it does
 
 - **Slack DM or web UI** — message your assistant via Slack (default) or the built-in web UI on port 8080
