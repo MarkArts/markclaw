@@ -3082,8 +3082,9 @@ fi
         return;
       }
 
-      // Call Claude API with the gathered context
-      const summary = await callClaudeForSummary(context, type, ref);
+      // Call Claude via CLI in a container
+      const prompt = `You are a terse engineering assistant. Given the following ${type === 'pr' ? 'Pull Request' : 'Jira ticket'} context, summarize what is left to do in 2-3 short sentences. Focus on: blockers, failing CI, requested changes, and next steps. If everything looks good, say so. Be concrete and actionable. Do NOT use markdown formatting — no bold, no headers, no bullet lists. Write plain text only, use dashes or numbered lines if needed.\n\nContext:\n${context}`;
+      const summary = await runClaudePrompt(prompt);
       jsonResponse(res, { summary });
     } catch (err: any) {
       jsonResponse(
@@ -3170,90 +3171,53 @@ function runContainerScript(script: string): Promise<string> {
   });
 }
 
-function getClaudeApiAuth(): {
-  headerName: string;
-  headerValue: string;
-} | null {
-  // Try API key first
-  const env = readSharedEnv();
-  const dotenv = readDotEnv();
-  const apiKey =
-    process.env.ANTHROPIC_API_KEY ||
-    env.ANTHROPIC_API_KEY ||
-    dotenv.ANTHROPIC_API_KEY;
-  if (apiKey) return { headerName: 'x-api-key', headerValue: apiKey };
+/** Run a prompt through Claude CLI inside a container */
+function runClaudePrompt(prompt: string): Promise<string> {
+  return new Promise((resolve) => {
+    const containerName = `markclaw-llm-${Date.now()}`;
+    const args: string[] = ['run', '-i', '--rm', '--name', containerName];
+    args.push('--network', 'host');
+    args.push('-e', `TZ=${TIMEZONE}`);
+    args.push('-e', 'AWS_EC2_METADATA_DISABLED=true');
 
-  // Fall back to OAuth credentials from ~/.claude/.credentials.json
-  try {
-    const credPath = path.join(os.homedir(), '.claude', '.credentials.json');
-    if (fs.existsSync(credPath)) {
-      const creds = JSON.parse(fs.readFileSync(credPath, 'utf-8'));
-      const token = creds?.claudeAiOauth?.accessToken;
-      if (token)
-        return { headerName: 'Authorization', headerValue: `Bearer ${token}` };
-    }
-  } catch {
-    /* ignore */
-  }
-
-  return null;
-}
-
-function callClaudeForSummary(
-  context: string,
-  type: string,
-  ref: string,
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const auth = getClaudeApiAuth();
-    if (!auth) {
-      reject(new Error('No API key or OAuth token configured'));
-      return;
+    // Mount Claude credentials for auth
+    const claudeDir = path.join(os.homedir(), '.claude');
+    if (fs.existsSync(claudeDir)) {
+      args.push(...readonlyMountArgs(claudeDir, '/home/node/.claude'));
     }
 
-    const prompt = `You are a terse engineering assistant. Given the following ${type === 'pr' ? 'Pull Request' : 'Jira ticket'} context, summarize what is left to do in 2-3 short sentences. Focus on: blockers, failing CI, requested changes, and next steps. If everything looks good, say so. Be concrete and actionable. Do NOT use markdown formatting — no bold, no headers, no bullet lists. Write plain text only, use dashes or numbered lines if needed.\n\nContext:\n${context}`;
+    args.push('--entrypoint', 'claude');
+    args.push(CONTAINER_IMAGE);
+    args.push('--print', '--model', 'claude-haiku-4-5-20251001', '--max-turns', '1', '-p', prompt);
 
-    const body = JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 256,
-      messages: [{ role: 'user', content: prompt }],
+    const proc = spawn(CONTAINER_RUNTIME_BIN, args, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 30000,
     });
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'anthropic-version': '2023-06-01',
-      'Content-Length': String(Buffer.byteLength(body)),
-      [auth.headerName]: auth.headerValue,
-    };
+    proc.stdin.end();
 
-    const req = https.request(
-      {
-        hostname: 'api.anthropic.com',
-        path: '/v1/messages',
-        method: 'POST',
-        headers,
-      },
-      (apiRes) => {
-        let data = '';
-        apiRes.on('data', (c: Buffer) => {
-          data += c.toString();
-        });
-        apiRes.on('end', () => {
-          try {
-            const parsed = JSON.parse(data);
-            const text = parsed.content?.[0]?.text || 'No summary generated';
-            resolve(text);
-          } catch {
-            reject(new Error('Failed to parse Claude response'));
-          }
-        });
-      },
-    );
-    req.on('error', (err) => {
-      reject(err);
+    let stdout = '';
+    let stderr = '';
+    proc.stdout.on('data', (d: Buffer) => {
+      stdout += d.toString();
     });
-    req.write(body);
-    req.end();
+    proc.stderr.on('data', (d: Buffer) => {
+      stderr += d.toString();
+    });
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        logger.warn(
+          { code, stderr: stderr.slice(0, 300) },
+          'Claude prompt container exited with error',
+        );
+      }
+      resolve(stdout.trim() || 'No summary generated');
+    });
+    proc.on('error', (err) => {
+      logger.error({ err }, 'Failed to spawn Claude prompt container');
+      resolve('No summary generated');
+    });
   });
 }
 
