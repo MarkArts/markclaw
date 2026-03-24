@@ -3026,6 +3026,51 @@ echo ${JSON.stringify(ciInfo)}
 echo ""
 echo "=== Recent CI Runs ==="
 gh run list --repo ${fullRepo} --branch "$(gh pr view ${prNum} --repo ${fullRepo} --json headRefName -q .headRefName 2>/dev/null)" --json name,status,conclusion --limit 5 2>/dev/null || echo "No CI data"
+echo ""
+echo "=== Linked Jira Tickets ==="
+PR_TITLE=$(gh pr view ${prNum} --repo ${fullRepo} --json title -q .title 2>/dev/null || echo "")
+PR_BRANCH=$(gh pr view ${prNum} --repo ${fullRepo} --json headRefName -q .headRefName 2>/dev/null || echo "")
+TICKET=$(echo "$PR_TITLE $PR_BRANCH" | grep -oE '[A-Z]{2,}-[0-9]+' | head -1)
+if [ -n "$TICKET" ] && [ -n "$JIRA_USER" ] && [ -n "$JIRA_API_TOKEN" ] && [ -n "$JIRA_SITE" ]; then
+  echo "Found ticket: $TICKET"
+  curl -s -u "$JIRA_USER:$JIRA_API_TOKEN" -H "Accept: application/json" "$JIRA_SITE/rest/api/3/issue/$TICKET?fields=summary,status,comment,assignee" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    f = d.get('fields', {})
+    print(d.get('key','') + ': ' + f.get('summary','') + ' [' + f.get('status',{}).get('name','') + ']')
+    assignee = f.get('assignee',{})
+    if assignee: print('Assigned to: ' + assignee.get('displayName','?'))
+    for c in f.get('comment',{}).get('comments',[])[-3:]:
+        body = c.get('body',{})
+        text = ''
+        if isinstance(body, dict):
+            for bl in body.get('content',[]):
+                for inner in bl.get('content',[]):
+                    if inner.get('type') == 'text': text += inner.get('text','')
+        print('  Comment by ' + c.get('author',{}).get('displayName','?') + ': ' + text[:200])
+except: pass
+" 2>&1
+else
+  echo "No Jira ticket found in PR title/branch"
+fi
+echo ""
+echo "=== Slack Mentions ==="
+if [ -n "$SLACK_BOT_TOKEN" ]; then
+  SEARCH_TERM="${shortRepo}#${prNum}"
+  curl -s -H "Authorization: Bearer $SLACK_BOT_TOKEN" "https://slack.com/api/search.messages?query=$(echo "$SEARCH_TERM" | sed 's/ /%20/g')&count=5&sort=timestamp&sort_dir=desc" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    msgs = d.get('messages',{}).get('matches',[])
+    if not msgs: print('No recent Slack messages found')
+    for m in msgs[:5]:
+        print(m.get('username','?') + ': ' + m.get('text','')[:200])
+except: print('Failed to search Slack')
+" 2>&1
+else
+  echo "Slack not configured"
+fi
 `;
       } else if (type === 'jira') {
         // Use curl + Jira REST API (acli requires persistent auth config)
@@ -3068,6 +3113,38 @@ except Exception as e:
     print('Raw: ' + sys.stdin.read()[:200] if hasattr(sys.stdin, 'read') else '')
 " 2>&1
 fi
+echo ""
+echo "=== Linked PRs ==="
+if command -v gh &>/dev/null && [ -n "$GH_TOKEN" ]; then
+  gh search prs "${safeRef}" ${GITHUB_ORG ? `--owner "${GITHUB_ORG}"` : ''} --json repository,title,number,state,url --limit 5 2>/dev/null | python3 -c "
+import sys, json
+try:
+    prs = json.load(sys.stdin)
+    if not prs: print('No linked PRs found')
+    for p in prs:
+        repo = p.get('repository',{}).get('name','?')
+        print(repo + '#' + str(p.get('number','?')) + ' [' + p.get('state','?') + ']: ' + p.get('title',''))
+except: print('Failed to search PRs')
+" 2>&1
+else
+  echo "GitHub not configured"
+fi
+echo ""
+echo "=== Slack Mentions ==="
+if [ -n "$SLACK_BOT_TOKEN" ]; then
+  curl -s -H "Authorization: Bearer $SLACK_BOT_TOKEN" "https://slack.com/api/search.messages?query=${safeRef}&count=5&sort=timestamp&sort_dir=desc" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    msgs = d.get('messages',{}).get('matches',[])
+    if not msgs: print('No recent Slack messages found')
+    for m in msgs[:5]:
+        print(m.get('username','?') + ': ' + m.get('text','')[:200])
+except: print('Failed to search Slack')
+" 2>&1
+else
+  echo "Slack not configured"
+fi
 `;
       } else {
         jsonResponse(res, { error: 'unknown type' }, 400);
@@ -3083,7 +3160,7 @@ fi
       }
 
       // Call Claude via CLI in a container
-      const prompt = `You are a terse engineering assistant. Given the following ${type === 'pr' ? 'Pull Request' : 'Jira ticket'} context, summarize what is left to do in 2-3 short sentences. Focus on: blockers, failing CI, requested changes, and next steps. If everything looks good, say so. Be concrete and actionable. Do NOT use markdown formatting — no bold, no headers, no bullet lists. Write plain text only, use dashes or numbered lines if needed.\n\nContext:\n${context}`;
+      const prompt = `You are a terse engineering assistant. Given the following ${type === 'pr' ? 'Pull Request' : 'Jira ticket'} context (including linked tickets, PRs, CI status, comments, and recent Slack messages), summarize the current status and what is left to do in 2-4 short sentences. Focus on: blockers, failing CI, requested changes, Slack discussion, and next steps. If everything looks good, say so. Be concrete and actionable. Do NOT use markdown formatting — no bold, no headers, no bullet lists. Write plain text only, use dashes or numbered lines if needed.\n\nContext:\n${context}`;
       const summary = await runClaudePrompt(prompt);
       jsonResponse(res, { summary });
     } catch (err: any) {
@@ -3115,6 +3192,10 @@ function runContainerScript(script: string): Promise<string> {
       }
     }
     args.push('-e', 'GH_CONFIG_DIR=/home/node/.config/gh');
+
+    // Inject Slack bot token for search
+    const slackToken = process.env.SLACK_BOT_TOKEN;
+    if (slackToken) args.push('-e', `SLACK_BOT_TOKEN=${slackToken}`);
 
     // Run as host user
     const hostUid = process.getuid?.();
