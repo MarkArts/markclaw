@@ -213,13 +213,10 @@ function buildVolumeMounts(
 
   // Build MCP servers config from available credentials
   const mcpServers: Record<string, unknown> = {};
-  if (sharedSecrets.SLITE_API_KEY) {
-    mcpServers.slite = {
-      command: 'npx',
-      args: ['-y', 'slite-mcp-server'],
-      env: { SLITE_API_KEY: sharedSecrets.SLITE_API_KEY },
-    };
-  }
+  mcpServers.slite = {
+    type: 'http',
+    url: 'https://api.slite.com/mcp',
+  };
 
   // Always regenerate settings so MCP config changes propagate
   fs.writeFileSync(

@@ -1496,8 +1496,7 @@ async function loadGroups() {
     list.innerHTML = '';
     list.appendChild(fragment);
 
-    // #14: Update awaiting badge + #19: Update favicon
-    updateAwaitingBadge();
+    // #19: Update favicon
     updateFavicon();
   } catch(e) {
     document.getElementById('groups-list').innerHTML = '<div class="empty-state">error loading</div>';
