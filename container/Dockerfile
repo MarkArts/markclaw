@@ -64,6 +64,11 @@ RUN apt-get update && apt-get install -y ca-certificates gnupg \
 RUN npm install -g heroku jira-acli \
     && ln -s "$(which jira-acli)" /usr/local/bin/acli
 
+# Install bun runtime
+RUN curl -fsSL https://bun.sh/install | bash \
+    && cp /root/.bun/bin/bun /usr/local/bin/bun \
+    && cp /root/.bun/bin/bunx /usr/local/bin/bunx
+
 # Install agent-browser and claude-code globally
 RUN npm install -g agent-browser @anthropic-ai/claude-code@latest
 

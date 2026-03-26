@@ -218,6 +218,30 @@ function buildVolumeMounts(
     url: 'https://api.slite.com/mcp',
   };
 
+  // Quatt Atlas MCP server (pre-built, mounted read-only)
+  const atlasDir = path.join(DATA_DIR, 'atlas-plugin');
+  const atlasMcpBin = path.join(
+    atlasDir,
+    'packages',
+    'mcp-server',
+    'dist',
+    'src',
+    'bin',
+    'quatt-mcp.js',
+  );
+  if (fs.existsSync(atlasMcpBin)) {
+    mcpServers['quatt-architecture'] = {
+      command: 'bun',
+      args: ['run', '/opt/atlas/packages/mcp-server/dist/src/bin/quatt-mcp.js'],
+      cwd: '/opt/atlas',
+    };
+    mounts.push({
+      hostPath: atlasDir,
+      containerPath: '/opt/atlas',
+      readonly: false,
+    });
+  }
+
   // Always regenerate settings so MCP config changes propagate
   fs.writeFileSync(
     settingsFile,

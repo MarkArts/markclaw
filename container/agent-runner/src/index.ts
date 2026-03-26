@@ -116,20 +116,30 @@ function writeMcpConfig(containerInput: ContainerInput, sdkEnv: Record<string, s
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const mcpServerPath = path.join(__dirname, 'ipc-mcp-stdio.js');
 
-  const mcpConfig: Record<string, unknown> = {
-    mcpServers: {
-      markclaw: {
-        command: 'node',
-        args: [mcpServerPath],
-        env: {
-          MARKCLAW_CHAT_JID: containerInput.chatJid,
-          MARKCLAW_GROUP_FOLDER: containerInput.groupFolder,
-          MARKCLAW_IS_MAIN: containerInput.isMain ? '1' : '0',
-          ...(sdkEnv.SLACK_BOT_TOKEN ? { SLACK_BOT_TOKEN: sdkEnv.SLACK_BOT_TOKEN } : {}),
-        },
+  const mcpServers: Record<string, unknown> = {
+    markclaw: {
+      command: 'node',
+      args: [mcpServerPath],
+      env: {
+        MARKCLAW_CHAT_JID: containerInput.chatJid,
+        MARKCLAW_GROUP_FOLDER: containerInput.groupFolder,
+        MARKCLAW_IS_MAIN: containerInput.isMain ? '1' : '0',
+        ...(sdkEnv.SLACK_BOT_TOKEN ? { SLACK_BOT_TOKEN: sdkEnv.SLACK_BOT_TOKEN } : {}),
       },
     },
   };
+
+  // Add Quatt Atlas MCP server if mounted
+  const atlasMcpBin = '/opt/atlas/packages/mcp-server/dist/src/bin/quatt-mcp.js';
+  if (fs.existsSync(atlasMcpBin)) {
+    mcpServers['quatt-architecture'] = {
+      command: 'bun',
+      args: ['run', atlasMcpBin],
+      cwd: '/opt/atlas',
+    };
+  }
+
+  const mcpConfig: Record<string, unknown> = { mcpServers };
 
   fs.writeFileSync('/workspace/group/.mcp.json', JSON.stringify(mcpConfig, null, 2));
   log('Wrote .mcp.json with markclaw MCP server');
