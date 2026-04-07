@@ -3269,7 +3269,8 @@ function runClaudePrompt(prompt: string): Promise<string> {
 
     args.push('--entrypoint', 'claude');
     args.push(CONTAINER_IMAGE);
-    args.push('--print', '--model', 'claude-haiku-4-5-20251001', '--max-turns', '1', '-p', prompt);
+    const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6';
+    args.push('--print', '--model', model, '--max-turns', '1', '-p', prompt);
 
     const proc = spawn(CONTAINER_RUNTIME_BIN, args, {
       stdio: ['pipe', 'pipe', 'pipe'],

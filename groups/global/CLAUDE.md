@@ -57,6 +57,17 @@ When asked to investigate a Sentry error, always triage before diving into code:
 
 Report findings **first** before investigating root cause.
 
+### CloudHealth (cost management)
+- REST API: `https://chapi.cloudhealthtech.com/`
+- Auth: `Authorization: Bearer $CLOUDHEALTH_API_KEY` header
+- Common endpoints:
+  - `GET /olap_reports/cost/history` — cost over time (accepts `dimensions[]`, `measures[]`, `filters[]`, `interval` params)
+  - `GET /olap_reports/cost/current` — current period costs
+  - `GET /v1/aws_accounts` — list AWS accounts
+  - `GET /v1/assets/search?api_version=2&name=<type>` — search assets (ec2_instances, rds_instances, s3_buckets, etc.)
+- Example: `curl -s -H "Authorization: Bearer $CLOUDHEALTH_API_KEY" "https://chapi.cloudhealthtech.com/olap_reports/cost/history?interval=monthly&dimensions[]=time&dimensions[]=AWS-Service-Category&measures[]=cost"`
+- Full API docs: https://apidocs.cloudhealthtech.com/
+
 ### Other tools
 - **Slite**: MCP tool — `mcp__slite__*` for company wiki search
 - **Axiom**: `curl -H "Authorization: Bearer $AXIOM_TOKEN" -H "X-Axiom-Org-Id: $AXIOM_ORG_ID" ...`

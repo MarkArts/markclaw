@@ -21,6 +21,20 @@ const MAX_MESSAGE_LENGTH = 4000;
  * Extract readable text from Slack rich message blocks and attachments.
  * Used as fallback when msg.text is empty (e.g. Grafana alerts, bot cards).
  */
+/** Convert a rich_text element to text, preserving @mentions as <@U12345> */
+function richElementToText(e: any): string {
+  if (e.type === 'user') return `<@${e.user_id}>`;
+  if (e.type === 'channel') return `<#${e.channel_id}>`;
+  if (e.type === 'link') return e.url || '';
+  if (e.type === 'emoji') return `:${e.name}:`;
+  return e.text || '';
+}
+
+/** Extract inline elements from a rich_text sub-element */
+function richInlineToText(el: any): string {
+  return (el.elements || []).map(richElementToText).join('');
+}
+
 function extractRichContent(
   blocks?: any[],
   attachments?: any[],
@@ -43,9 +57,7 @@ function extractRichContent(
             el.type === 'rich_text_section' ||
             el.type === 'rich_text_preformatted'
           ) {
-            const text = (el.elements || [])
-              .map((e: any) => e.text || e.url || '')
-              .join('');
+            const text = richInlineToText(el);
             if (text) {
               parts.push(
                 el.type === 'rich_text_preformatted'
@@ -54,9 +66,7 @@ function extractRichContent(
               );
             }
           } else if (el.type === 'rich_text_quote') {
-            const text = (el.elements || [])
-              .map((e: any) => e.text || e.url || '')
-              .join('');
+            const text = richInlineToText(el);
             if (text)
               parts.push(
                 text
@@ -66,9 +76,7 @@ function extractRichContent(
               );
           } else if (el.type === 'rich_text_list') {
             for (const item of el.elements || []) {
-              const text = (item.elements || [])
-                .map((e: any) => e.text || e.url || '')
-                .join('');
+              const text = richInlineToText(item);
               if (text) parts.push(`- ${text}`);
             }
           }
@@ -117,6 +125,8 @@ export class SlackChannel implements Channel {
 
   private opts: SlackChannelOpts;
   private allowedUsers: Set<string> | null = null;
+  // Channels where all users can interact (not just allowedUsers)
+  private openChannels = new Set(['C0AQ2LYTJ7K']);
 
   constructor(opts: SlackChannelOpts) {
     this.opts = opts;
@@ -220,7 +230,8 @@ export class SlackChannel implements Channel {
           !isBotMessage &&
           this.allowedUsers &&
           msg.user &&
-          !this.allowedUsers.has(msg.user)
+          !this.allowedUsers.has(msg.user) &&
+          !this.openChannels.has(msg.channel)
         )
           return;
 
@@ -251,7 +262,7 @@ export class SlackChannel implements Channel {
               }
 
               // Translate @mentions for the main session
-              let mainContent = msg.text ?? '';
+              let mainContent = await this.resolveMentions(msg.text ?? '');
               if (this.botUserId && !isBotMessage) {
                 const mentionPattern = `<@${this.botUserId}>`;
                 if (
@@ -300,7 +311,9 @@ export class SlackChannel implements Channel {
               );
             }
             // Auto-register thread session inheriting parent channel config
+            // In group channels (not open channels), only auto-register if user @mentioned the bot
             const parent = this.opts.registeredGroups()[channelJid];
+            if (isGroup && !this.openChannels.has(msg.channel) && !isMentionFromAllowedUser) return;
             const safeTs = threadTs!.replace('.', '_');
             const folder = `${parent.folder}_t_${safeTs}`.slice(0, 64);
             this.opts.registerGroup(jid, {
@@ -350,10 +363,9 @@ export class SlackChannel implements Channel {
             'unknown';
         }
 
-        // Translate Slack <@UBOTID> mentions into TRIGGER_PATTERN format.
-        // Slack encodes @mentions as <@U12345>, which won't match TRIGGER_PATTERN
-        // (e.g., ^@<ASSISTANT_NAME>\b), so we prepend the trigger when the bot is @mentioned.
-        let content = msg.text ?? '';
+        // Resolve all <@U12345> mentions to @DisplayName, then translate
+        // the bot's own mention into the trigger pattern.
+        let content = await this.resolveMentions(msg.text ?? '');
         if (this.botUserId && !isBotMessage) {
           const mentionPattern = `<@${this.botUserId}>`;
           if (
@@ -408,11 +420,12 @@ export class SlackChannel implements Channel {
           this.opts.onChatMetadata(jid, timestamp, undefined, 'slack', true);
         }
 
-        // Only allowed users
+        // Only allowed users (open channels bypass)
         if (
           this.allowedUsers &&
           event.user &&
-          !this.allowedUsers.has(event.user)
+          !this.allowedUsers.has(event.user) &&
+          !this.openChannels.has(event.channel)
         )
           return;
 
@@ -525,7 +538,8 @@ export class SlackChannel implements Channel {
     this.app.event('reaction_added', async ({ event }) => {
       try {
         if (event.item.type !== 'message') return;
-        if (this.allowedUsers && !this.allowedUsers.has(event.user)) return;
+        const reactionChannel = (event.item as { channel?: string }).channel;
+        if (this.allowedUsers && !this.allowedUsers.has(event.user) && (!reactionChannel || !this.openChannels.has(reactionChannel))) return;
 
         const channelId = (
           event.item as { type: 'message'; channel: string; ts: string }
@@ -783,6 +797,23 @@ export class SlackChannel implements Channel {
       logger.debug({ userId, err }, 'Failed to resolve Slack user name');
       return undefined;
     }
+  }
+
+  /** Resolve <@U12345> and <@U12345|Name> mentions in text to @DisplayName */
+  private async resolveMentions(text: string): Promise<string> {
+    const mentionPattern = /<@(U[A-Z0-9]+)(?:\|([^>]*))?>/g;
+    const mentions = [...text.matchAll(mentionPattern)];
+    if (mentions.length === 0) return text;
+
+    let result = text;
+    for (const match of mentions) {
+      const userId = match[1];
+      const fallbackName = match[2]; // Slack sometimes includes |Name
+      const displayName =
+        fallbackName || (await this.resolveUserName(userId)) || userId;
+      result = result.replace(match[0], `@${displayName}`);
+    }
+    return result;
   }
 
   private async flushOutgoingQueue(): Promise<void> {
