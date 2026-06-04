@@ -12,6 +12,7 @@ import {
   CONTAINER_MAX_OUTPUT_SIZE,
   CONTAINER_TIMEOUT,
   DATA_DIR,
+  GH_STACK_ENABLED,
   GROUPS_DIR,
   IDLE_TIMEOUT,
   TIMEZONE,
@@ -333,6 +334,20 @@ function buildVolumeMounts(
       containerPath: '/home/node/.claude/skills',
       readonly: false,
     });
+
+    // GitHub Stacked PRs (gh-stack) is in private beta. While GH_STACK_ENABLED is
+    // off, hide its skill from agents by overlaying an empty dir over the skill
+    // folder so SKILL.md isn't discovered. The binary stays baked in the image
+    // (dormant) — flip the flag and restart to expose the skill, no rebuild needed.
+    if (!GH_STACK_ENABLED) {
+      const emptyOverlay = path.join(DATA_DIR, 'disabled-skill-overlay');
+      fs.mkdirSync(emptyOverlay, { recursive: true });
+      mounts.push({
+        hostPath: emptyOverlay,
+        containerPath: '/home/node/.claude/skills/gh-stack',
+        readonly: true,
+      });
+    }
   }
 
   // SSH keys — project-local .ssh/ directory mounted into containers.

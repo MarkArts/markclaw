@@ -27,7 +27,7 @@ Your text output is NOT sent to the user. Use tools to communicate.
 ### GitHub
 - Use `gh` for all GitHub operations. Always use HTTPS (SSH does NOT work).
 - After creating a PR, monitor CI. Fix failures before reporting done.
-- **Stacked PRs**: `gh stack` (the gh-stack extension) creates/manages a chain of dependent PRs. Because you run non-interactively, ALWAYS pass the non-interactive flags — `gh stack submit --auto`, `gh stack view --json`, and `--remote <name>` when needed — or commands will hang on prompts. See the `gh-stack` skill for the full workflow. Note: server-side Stacked PRs are in private preview, so `gh stack submit` only works on repos where the feature is enabled (exit code 9 = not enabled).
+- **Stacked PRs** (`gh stack`): **DISABLED by default** — GitHub Stacked PRs are in private beta. The capability is gated behind the `GH_STACK_ENABLED` flag (default false); while off, the `gh-stack` skill is hidden and you should NOT use `gh stack`. When the flag is enabled, run non-interactively (`gh stack submit --auto`, `gh stack view --json`, `--remote <name>`) or commands hang on prompts — see the `gh-stack` skill. (`gh stack submit` exit code 9 = feature not enabled for the repo.)
 
 ### Pulumi
 - Run via `nix-shell -p pulumi --run "pulumi <cmd>"`. Needs AWS SSO auth with aws sso login --no-browser.

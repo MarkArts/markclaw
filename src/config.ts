@@ -6,7 +6,7 @@ import { readEnvFile } from './env.js';
 // Read config values from .env (falls back to process.env).
 // Secrets are NOT read here — they stay on disk and are loaded only
 // where needed (container-runner.ts) to avoid leaking to child processes.
-const envConfig = readEnvFile(['ASSISTANT_NAME']);
+const envConfig = readEnvFile(['ASSISTANT_NAME', 'GH_STACK_ENABLED']);
 
 export const ASSISTANT_NAME =
   process.env.ASSISTANT_NAME || envConfig.ASSISTANT_NAME || 'changeme';
@@ -44,6 +44,16 @@ export const MAX_CONCURRENT_CONTAINERS = Math.max(
   1,
   parseInt(process.env.MAX_CONCURRENT_CONTAINERS || '5', 10) || 5,
 );
+
+// GitHub Stacked PRs (gh-stack) is in private beta. Gate the agent-facing
+// capability behind this flag (default OFF) until the feature is enabled for our
+// repos. When false, container-runner hides the gh-stack skill from agents (the
+// binary stays baked in the image, dormant). Flip to "true" in .env and restart
+// markclaw to expose it — no image rebuild needed.
+export const GH_STACK_ENABLED =
+  (process.env.GH_STACK_ENABLED || envConfig.GH_STACK_ENABLED || 'false')
+    .trim()
+    .toLowerCase() === 'true';
 
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
