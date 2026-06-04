@@ -147,6 +147,41 @@ describe('schedule_task authorization', () => {
     const allTasks = getAllTasks();
     expect(allTasks.length).toBe(0);
   });
+
+  it('rebinds thread-bound schedule to parent group', async () => {
+    // Register a thread session under MAIN_GROUP
+    const threadJid = 'slack:C_MAIN_001:1700000000.000000';
+    const threadGroup: RegisteredGroup = {
+      name: 'Main-thread',
+      folder: 'slack_main_t_1700000000_000000',
+      trigger: 'always',
+      added_at: '2024-01-01T00:00:00.000Z',
+      parentFolder: 'slack_main',
+    };
+    groups[threadJid] = threadGroup;
+    setRegisteredGroup(threadJid, threadGroup);
+
+    // Agent in the thread session schedules a task targeting itself
+    await processTaskIpc(
+      {
+        type: 'schedule_task',
+        prompt: 'thread task',
+        schedule_type: 'once',
+        schedule_value: '2025-06-01T00:00:00.000Z',
+        targetJid: threadJid,
+      },
+      'slack_main_t_1700000000_000000',
+      false,
+      deps,
+    );
+
+    const allTasks = getAllTasks();
+    expect(allTasks.length).toBe(1);
+    // Schedule should be rebound to the parent (slack_main / slack:C_MAIN_001),
+    // not the thread.
+    expect(allTasks[0].group_folder).toBe('slack_main');
+    expect(allTasks[0].chat_jid).toBe('slack:C_MAIN_001');
+  });
 });
 
 // --- pause_task authorization ---

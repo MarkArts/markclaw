@@ -437,7 +437,7 @@ describe('SlackChannel', () => {
       );
     });
 
-    it('routes threaded replies to a per-thread JID and auto-registers the thread', async () => {
+    it('routes threaded replies to a per-thread JID and auto-registers the thread when @mentioned', async () => {
       const opts = createTestOpts();
       const channel = new SlackChannel(opts);
       await channel.connect();
@@ -445,7 +445,7 @@ describe('SlackChannel', () => {
       const event = createMessageEvent({
         ts: '1704067201.000000',
         threadTs: '1704067200.000000', // parent message ts — this is a reply
-        text: 'Thread reply',
+        text: 'Hey <@U_BOT_123> Thread reply',
       });
       await triggerMessageEvent(event);
 
@@ -455,11 +455,12 @@ describe('SlackChannel', () => {
         threadJid,
         expect.objectContaining({
           folder: expect.stringContaining('test-channel_t_'),
+          requiresTrigger: true,
         }),
       );
       expect(opts.onMessage).toHaveBeenCalledWith(
         threadJid,
-        expect.objectContaining({ content: 'Thread reply' }),
+        expect.objectContaining({ content: '@Jonesy Hey <@U_BOT_123> Thread reply' }),
       );
     });
 
@@ -1122,7 +1123,7 @@ describe('SlackChannel', () => {
         'slack:CNEWCHANNEL',
         expect.objectContaining({
           folder: 'slack_cnewchannel',
-          requiresTrigger: false,
+          requiresTrigger: true,
           isMain: false,
         }),
       );
@@ -1199,7 +1200,7 @@ describe('SlackChannel', () => {
       // Parent channel registered first
       expect(opts.registerGroup).toHaveBeenCalledWith(
         'slack:CNEWCHANNEL',
-        expect.objectContaining({ requiresTrigger: false }),
+        expect.objectContaining({ requiresTrigger: true }),
       );
       // Thread session registered second
       const safeTs = '1704067200_000000';
@@ -1207,7 +1208,7 @@ describe('SlackChannel', () => {
         `slack:CNEWCHANNEL:1704067200.000000`,
         expect.objectContaining({
           folder: expect.stringContaining(`_t_${safeTs}`),
-          requiresTrigger: false,
+          requiresTrigger: true,
         }),
       );
       // Message delivered to thread JID
@@ -1219,7 +1220,7 @@ describe('SlackChannel', () => {
       );
     });
 
-    it('auto-registers thread session when parent channel is already registered', async () => {
+    it('auto-registers thread session when parent channel is already registered and bot is @mentioned', async () => {
       const opts = createTestOpts({
         // Parent channel registered, thread not
         registeredGroups: vi.fn(() => ({
@@ -1238,7 +1239,7 @@ describe('SlackChannel', () => {
         channel: 'C0123456789',
         ts: '1704067201.000000',
         threadTs: '1704067200.000000',
-        text: 'Thread reply',
+        text: 'Hey <@U_BOT_123> thread reply',
         user: 'U_USER_456',
       });
       await triggerMessageEvent(event);
@@ -1249,8 +1250,36 @@ describe('SlackChannel', () => {
         'slack:C0123456789:1704067200.000000',
         expect.objectContaining({
           folder: expect.stringContaining('test-channel_t_'),
+          requiresTrigger: true,
         }),
       );
+    });
+
+    it('does NOT auto-register thread when parent exists but bot is not @mentioned', async () => {
+      const opts = createTestOpts({
+        registeredGroups: vi.fn(() => ({
+          'slack:C0123456789': {
+            name: 'test-channel',
+            folder: 'test-channel',
+            trigger: '@Jonesy',
+            added_at: '2024-01-01T00:00:00.000Z',
+          },
+        })),
+      });
+      const channel = new SlackChannel(opts);
+      await channel.connect();
+
+      const event = createMessageEvent({
+        channel: 'C0123456789',
+        ts: '1704067201.000000',
+        threadTs: '1704067200.000000',
+        text: 'Thread reply without mention',
+        user: 'U_USER_456',
+      });
+      await triggerMessageEvent(event);
+
+      expect(opts.registerGroup).not.toHaveBeenCalled();
+      expect(opts.onMessage).not.toHaveBeenCalled();
     });
   });
 

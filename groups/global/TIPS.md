@@ -12,5 +12,8 @@ This file should be short and concise — only instructions that apply to everyt
 - Descriptions: use **ADF JSON** via `--description-file` for rich formatting
 
 ## Verification
-- Always test locally (`pulumi preview` for IaC) before pushing
+- Always test locally (`pulumi preview` for IaC and lint or test suites) before pushing git commits
 - After deploying, verify it worked in the target system
+
+## Conciseness
+- One-sentence answers. No volunteered explanations, technical details, rationale, or "want me to..." prompts unless explicitly asked. Answer the question, nothing more.

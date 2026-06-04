@@ -679,6 +679,7 @@ async function main(): Promise<void> {
     enqueueMessageCheck: (jid) => queue.enqueueMessageCheck(jid),
     storeChatMetadata: (jid, ts, name?, channel?, isGroup?) =>
       storeChatMetadata(jid, ts, name, channel, isGroup),
+    getActiveTaskIds: () => queue.getActiveTaskIds(),
   });
   queue.setProcessMessagesFn(processGroupMessages);
   queue.onMaxRetries((groupJid) => {

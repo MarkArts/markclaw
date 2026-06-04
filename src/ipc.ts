@@ -269,8 +269,8 @@ export async function processTaskIpc(
         data.targetJid
       ) {
         // Resolve the target group from JID
-        const targetJid = data.targetJid as string;
-        const targetGroupEntry = registeredGroups[targetJid];
+        let targetJid = data.targetJid as string;
+        let targetGroupEntry = registeredGroups[targetJid];
 
         if (!targetGroupEntry) {
           logger.warn(
@@ -280,10 +280,51 @@ export async function processTaskIpc(
           break;
         }
 
+        // Schedules cannot be bound to thread sessions — rebind to the parent
+        // group so the task runs in the parent DM/channel context. Otherwise
+        // schedules end up replying into stale, long-forgotten threads.
+        if (targetGroupEntry.parentFolder) {
+          const parentFolder = targetGroupEntry.parentFolder;
+          const parentJid = Object.keys(registeredGroups).find(
+            (jid) =>
+              registeredGroups[jid].folder === parentFolder &&
+              !registeredGroups[jid].parentFolder,
+          );
+          if (!parentJid) {
+            logger.warn(
+              { targetJid, parentFolder },
+              'Cannot rebind thread-bound schedule: parent group not found',
+            );
+            break;
+          }
+          logger.info(
+            {
+              originalJid: targetJid,
+              originalFolder: targetGroupEntry.folder,
+              parentJid,
+              parentFolder,
+              sourceGroup,
+            },
+            'Rebinding thread-bound schedule to parent group',
+          );
+          targetJid = parentJid;
+          targetGroupEntry = registeredGroups[parentJid];
+        }
+
         const targetFolder = targetGroupEntry.folder;
 
-        // Authorization: non-main groups can only schedule for themselves
-        if (!isMain && targetFolder !== sourceGroup) {
+        // Authorization: non-main groups can schedule for themselves, or for
+        // their parent group (since thread sessions are children of a parent).
+        const sourceEntry = Object.values(registeredGroups).find(
+          (g) => g.folder === sourceGroup,
+        );
+        const isSourceChildOfTarget =
+          sourceEntry?.parentFolder === targetFolder;
+        if (
+          !isMain &&
+          targetFolder !== sourceGroup &&
+          !isSourceChildOfTarget
+        ) {
           logger.warn(
             { sourceGroup, targetFolder },
             'Unauthorized schedule_task attempt blocked',

@@ -26,17 +26,11 @@ Your text output is NOT sent to the user. Use tools to communicate.
 
 ### GitHub
 - Use `gh` for all GitHub operations. Always use HTTPS (SSH does NOT work).
-- **NEVER add comments to a PR** — not review comments, not inline comments, not general comments. Push code changes directly instead.
 - After creating a PR, monitor CI. Fix failures before reporting done.
-
-### Jira
-- CLI: `acli jira` (auth via `acli jira auth add -u $JIRA_SITE -e $JIRA_USER -t $JIRA_API_TOKEN` if needed)
-- `acli jira issue search --jql "..." --json`
-- `acli jira issue get --issue KEY-XXXX --json`
-- `acli jira issue create --project KEY --type Task --summary "..." --json`
+- **Stacked PRs**: `gh stack` (the gh-stack extension) creates/manages a chain of dependent PRs. Because you run non-interactively, ALWAYS pass the non-interactive flags — `gh stack submit --auto`, `gh stack view --json`, and `--remote <name>` when needed — or commands will hang on prompts. See the `gh-stack` skill for the full workflow. Note: server-side Stacked PRs are in private preview, so `gh stack submit` only works on repos where the feature is enabled (exit code 9 = not enabled).
 
 ### Pulumi
-- Run via `nix-shell -p pulumi --run "pulumi <cmd>"`. Needs AWS SSO auth.
+- Run via `nix-shell -p pulumi --run "pulumi <cmd>"`. Needs AWS SSO auth with aws sso login --no-browser.
 - Always run `pulumi preview` before declaring done.
 
 ### Google Workspace
@@ -45,15 +39,11 @@ Your text output is NOT sent to the user. Use tools to communicate.
 - Calendar: `gwcli calendar events`, `gwcli calendar create`
 - Drive: `gwcli drive list`, `gwcli drive search`
 
-### Sentry
-- CLI: `sentry-cli` (authenticated via `SENTRY_AUTH_TOKEN` env var)
-- Key commands: `sentry-cli issues list --project <project>`, `sentry-cli issues show <issue-id>`
-
 #### Investigating Sentry issues
 When asked to investigate a Sentry error, always triage before diving into code:
 1. **Frequency** — Is this a one-off or recurring?
-2. **User impact** — Who is affected and how?
-3. **Scope** — Isolated or widespread? Environment-specific?
+2. **User impact** — Who is affected and how? What bussniss processes are impacted
+3. **Scope** — Isolated or widespread? Environment-specific? 
 
 Report findings **first** before investigating root cause.
 
@@ -72,7 +62,9 @@ Report findings **first** before investigating root cause.
 - **Slite**: MCP tool — `mcp__slite__*` for company wiki search
 - **Axiom**: `curl -H "Authorization: Bearer $AXIOM_TOKEN" -H "X-Axiom-Org-Id: $AXIOM_ORG_ID" ...`
 - **Heroku**: CLI `heroku` (authenticated via `HEROKU_API_KEY` env var)
-- **Tailscale**: Read-only — `tailscale status`, `tailscale ping`. **NEVER run `tailscale up/down/funnel`**.
+- **Tempo (Jira time tracking)**: REST API at `https://api.eu.tempo.io/4/` (EU tenant — the global `api.tempo.io` returns 401). Auth: `Authorization: Bearer $TEMPO_API_TOKEN`. Worklog *creation* uses Jira (`POST /rest/api/3/issue/{key}/worklog` with `JIRA_API_TOKEN`); Tempo is only needed for the *submit timesheet* action and Tempo-specific reads. Example: `curl -H "Authorization: Bearer $TEMPO_API_TOKEN" https://api.eu.tempo.io/4/timesheet-approvals/waiting`.
+
+You run inside a tailnet wich is managed by a sunet route in the aws-dev-instances github repo. tailscale acls are in the tailscale config repo and you can find networking specifics in aws-ipam too
 
 ## Links
 

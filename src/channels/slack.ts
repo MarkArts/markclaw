@@ -299,7 +299,7 @@ export class SlackChannel implements Channel {
                 folder: channelFolder,
                 trigger: ASSISTANT_NAME,
                 added_at: new Date().toISOString(),
-                requiresTrigger: false,
+                requiresTrigger: true,
                 isMain: false,
               });
               this.opts.onChatMetadata(
@@ -321,7 +321,7 @@ export class SlackChannel implements Channel {
               folder,
               trigger: parent.trigger,
               added_at: new Date().toISOString(),
-              requiresTrigger: false,
+              requiresTrigger: true,
               isMain: false,
             });
             this.opts.onChatMetadata(jid, timestamp, undefined, 'slack', true);
@@ -340,7 +340,7 @@ export class SlackChannel implements Channel {
               folder: channelFolder,
               trigger: ASSISTANT_NAME,
               added_at: new Date().toISOString(),
-              requiresTrigger: false,
+              requiresTrigger: true,
               isMain: false,
             });
             this.opts.onChatMetadata(
@@ -460,7 +460,7 @@ export class SlackChannel implements Channel {
               folder: channelFolder,
               trigger: ASSISTANT_NAME,
               added_at: new Date().toISOString(),
-              requiresTrigger: false,
+              requiresTrigger: true,
               isMain: false,
             });
             this.opts.onChatMetadata(
@@ -480,7 +480,7 @@ export class SlackChannel implements Channel {
             folder,
             trigger: parent.trigger,
             added_at: new Date().toISOString(),
-            requiresTrigger: false,
+            requiresTrigger: true,
             isMain: false,
           });
           this.opts.onChatMetadata(jid, timestamp, undefined, 'slack', true);
@@ -490,7 +490,7 @@ export class SlackChannel implements Channel {
             folder: channelFolder,
             trigger: ASSISTANT_NAME,
             added_at: new Date().toISOString(),
-            requiresTrigger: false,
+            requiresTrigger: true,
             isMain: false,
           });
           this.opts.onChatMetadata(

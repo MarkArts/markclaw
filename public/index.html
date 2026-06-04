@@ -1337,6 +1337,7 @@ let liveSource = null;
 let isLive = false;
 let isInitialLoad = true;
 let agentsInterval = null;
+let schedulesInterval = null;
 
 // Load config from backend (Jira site, GitHub org, etc.)
 window.__MC_CONFIG = {};
@@ -1371,6 +1372,7 @@ function updateControls() {
   updateSessionHeader();
   // #6: Start/stop agents auto-refresh
   if (currentTab === 'agents') startAgentsRefresh(); else stopAgentsRefresh();
+  if (currentTab === 'schedules') startSchedulesRefresh(); else stopSchedulesRefresh();
   updateInputBar();
 }
 
@@ -1930,11 +1932,14 @@ async function loadSchedules() {
       const lastRunBadge = t.last_run_status
         ? `<span class="sched-badge ${t.last_run_status === 'error' ? 'error' : 'active'}">${t.last_run_status === 'error' ? 'last run failed' : 'last run ok'}</span>`
         : '';
+      const runningBadge = t.is_running
+        ? `<span class="sched-badge active" style="background:rgba(52,211,153,0.18)">● running</span>`
+        : '';
 
       html += `<div class="schedule-card ${statusCls}" onclick="toggleRuns('${t.id}', this)">`;
       html += `<div class="sched-header">`;
       html += `<span class="sched-prompt" title="${escHtml(t.prompt.slice(0, 500))}">${escHtml(title)}</span>`;
-      html += `<div style="display:flex;gap:6px;align-items:center">${lastRunBadge}<span class="sched-badge ${badgeCls}">${escHtml(t.status)}</span></div>`;
+      html += `<div style="display:flex;gap:6px;align-items:center">${runningBadge}${lastRunBadge}<span class="sched-badge ${badgeCls}">${escHtml(t.status)}</span></div>`;
       html += `</div>`;
       html += `<div class="sched-meta">`;
       html += `<span title="${escHtml(t.schedule_value)}">${escHtml(scheduleHuman)}</span>`;
@@ -1968,7 +1973,7 @@ async function loadSchedules() {
       html += `<option value=""${!curModel ? ' selected' : ''}>default${defaultFamily ? ' (' + defaultFamily + ')' : ''}</option>`;
       html += `<option value="claude-sonnet-4-6"${curModel.includes('sonnet') ? ' selected' : ''}>sonnet</option>`;
       html += `<option value="claude-haiku-4-5-20251001"${curModel.includes('haiku') ? ' selected' : ''}>haiku</option>`;
-      html += `<option value="claude-opus-4-6"${curModel.includes('opus') ? ' selected' : ''}>opus</option>`;
+      html += `<option value="claude-opus-4-7"${curModel.includes('opus') ? ' selected' : ''}>opus</option>`;
       html += `</select>`;
       if (t.status === 'active') {
         html += `<button class="btn" style="font-size:10px;padding:3px 10px" onclick="event.stopPropagation(); scheduleAction('${t.id}','pause')">Pause</button>`;
@@ -1976,7 +1981,9 @@ async function loadSchedules() {
         html += `<button class="btn" style="font-size:10px;padding:3px 10px;color:var(--green);border-color:rgba(52,211,153,0.3)" onclick="event.stopPropagation(); scheduleAction('${t.id}','resume')">Resume</button>`;
       }
       html += `<button class="btn btn-deactivate" style="font-size:10px;padding:3px 10px" onclick="event.stopPropagation(); if(confirm('Delete this schedule permanently?')) scheduleAction('${t.id}','delete')">Delete</button>`;
-      html += `<button class="btn" style="font-size:10px;padding:3px 10px;color:var(--green);border-color:rgba(52,211,153,0.3)" onclick="event.stopPropagation(); runScheduleNow('${t.id}')">Run Now</button>`;
+      const runBtnLabel = t.is_running ? 'Running…' : 'Run Now';
+      const runBtnDisabled = t.is_running ? 'disabled' : '';
+      html += `<button class="btn run-now-btn" id="run-now-${t.id}" style="font-size:10px;padding:3px 10px;color:var(--green);border-color:rgba(52,211,153,0.3)" ${runBtnDisabled} onclick="event.stopPropagation(); runScheduleNow('${t.id}', this)">${runBtnLabel}</button>`;
       html += `</div>`;
       if (t.last_run_error) {
         html += `<div class="run-error" style="margin-top:6px">${escHtml(t.last_run_error.slice(0, 300))}</div>`;
@@ -2567,6 +2574,14 @@ function startAgentsRefresh() {
 }
 function stopAgentsRefresh() { if (agentsInterval) { clearInterval(agentsInterval); agentsInterval = null; } }
 
+// Auto-refresh schedules view every 10s so the "running" badge and last-run
+// status stay in sync without forcing the user to switch tabs.
+function startSchedulesRefresh() {
+  stopSchedulesRefresh();
+  schedulesInterval = setInterval(() => { if (currentTab === 'schedules') loadSchedules(); }, 10000);
+}
+function stopSchedulesRefresh() { if (schedulesInterval) { clearInterval(schedulesInterval); schedulesInterval = null; } }
+
 // --- #13: Auto-update relative timestamps every 30s ---
 setInterval(() => {
   if (groupsCache.length > 0) loadGroups();
@@ -3139,7 +3154,10 @@ async function scheduleAction(taskId, action) {
   } catch(e) { showToast('Failed: ' + e.message, 'error'); }
 }
 
-async function runScheduleNow(taskId) {
+async function runScheduleNow(taskId, btn) {
+  // Optimistically disable the button so a frantic re-click can't double-fire
+  // before the server response or list refresh lands.
+  if (btn) { btn.disabled = true; btn.textContent = 'Triggering…'; }
   try {
     const res = await fetch('/api/schedule-run-now', {
       method: 'POST',
@@ -3147,9 +3165,25 @@ async function runScheduleNow(taskId) {
       body: JSON.stringify({ id: taskId }),
     });
     const data = await res.json();
-    if (data.error) { showToast('Error: ' + data.error, 'error'); return; }
-    showToast('Task triggered — running now', 'success');
-  } catch(e) { showToast('Failed: ' + e.message, 'error'); }
+    if (data.error) {
+      showToast('Error: ' + data.error, 'error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Run Now'; }
+      return;
+    }
+    if (data.state === 'duplicate') {
+      showToast('Already running — ignored', 'success');
+    } else if (data.state === 'queued') {
+      showToast('Queued — group is busy, will start after current run', 'success');
+    } else {
+      showToast('Started', 'success');
+    }
+    if (btn) { btn.textContent = 'Running…'; }
+    // Refresh the list so the running badge appears + button stays accurate.
+    if (currentTab === 'schedules') loadSchedules();
+  } catch(e) {
+    showToast('Failed: ' + e.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Run Now'; }
+  }
 }
 
 async function changeScheduleModel(taskId, model) {
@@ -3270,7 +3304,7 @@ const TEAM_PLAN = {
   costPerSeat: 100, // $/month (annual billing)
   seats: 1,
   pricing: {
-    'claude-opus-4-6':   { input: 5, output: 25, cacheRead: 0.50, cacheWrite: 6.25 },
+    'claude-opus-4-7':   { input: 5, output: 25, cacheRead: 0.50, cacheWrite: 6.25 },
     'claude-opus-4-5':   { input: 5, output: 25, cacheRead: 0.50, cacheWrite: 6.25 },
     'claude-sonnet-4-6': { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 3.75 },
     'claude-sonnet-4-5': { input: 3, output: 15, cacheRead: 0.30, cacheWrite: 3.75 },

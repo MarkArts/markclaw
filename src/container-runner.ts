@@ -83,6 +83,42 @@ const GLOBAL_WRITABLE_FILES = [
 ];
 
 /**
+ * Read the host user's ~/.claude/settings.json hooks block and rewrite
+ * any ~/.claude/hooks/... paths to absolute container paths. Agent
+ * containers get the host's hooks directory mounted at /home/node/.claude/hooks,
+ * so rewriting the commands keeps them resolvable regardless of shell ~ expansion.
+ *
+ * Returns undefined when no hooks are configured on the host.
+ */
+function loadHostHooks(): Record<string, unknown> | undefined {
+  const hostSettingsPath = path.join(os.homedir(), '.claude', 'settings.json');
+  if (!fs.existsSync(hostSettingsPath)) return undefined;
+  try {
+    const raw = fs.readFileSync(hostSettingsPath, 'utf-8');
+    const parsed = JSON.parse(raw) as { hooks?: Record<string, unknown> };
+    if (!parsed.hooks) return undefined;
+
+    const rewrite = (value: unknown): unknown => {
+      if (typeof value === 'string') {
+        return value.replace(/~\/.claude\/hooks\//g, '/home/node/.claude/hooks/');
+      }
+      if (Array.isArray(value)) return value.map(rewrite);
+      if (value && typeof value === 'object') {
+        const out: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(value)) out[k] = rewrite(v);
+        return out;
+      }
+      return value;
+    };
+
+    return rewrite(parsed.hooks) as Record<string, unknown>;
+  } catch (err) {
+    logger.warn({ err }, 'Failed to load host ~/.claude/settings.json hooks');
+    return undefined;
+  }
+}
+
+/**
  * Mount the global directory read-only, with writable overlays for
  * specific memory files. Prevents agents from cloning repos or writing
  * arbitrary files into the shared global directory.
@@ -242,6 +278,10 @@ function buildVolumeMounts(
     });
   }
 
+  // Propagate host ~/.claude/settings.json hooks (pre-commit, post-push CI monitor, etc.)
+  // so agent sessions get the same workflow reminders as interactive host sessions.
+  const hostHooks = loadHostHooks();
+
   // Always regenerate settings so MCP config changes propagate
   fs.writeFileSync(
     settingsFile,
@@ -253,7 +293,15 @@ function buildVolumeMounts(
           CLAUDE_CODE_DISABLE_AUTO_MEMORY: '0',
         },
         effortLevel: 'max',
+        // ultracode: xhigh effort + standing dynamic-workflow orchestration.
+        // Requires workflows enabled and an xhigh-capable model (claude-opus-4-8).
+        // skipWorkflowUsageWarning avoids a one-time gate (moot under
+        // --dangerously-skip-permissions, but set for robustness).
+        ultracode: true,
+        enableWorkflows: true,
+        skipWorkflowUsageWarning: true,
         ...(Object.keys(mcpServers).length > 0 ? { mcpServers } : {}),
+        ...(hostHooks ? { hooks: hostHooks } : {}),
       },
       null,
       2,
@@ -265,6 +313,17 @@ function buildVolumeMounts(
     containerPath: '/home/node/.claude',
     readonly: false,
   });
+
+  // Mount host's ~/.claude/hooks/ so the commands referenced by the propagated
+  // settings.json hooks actually exist inside the container.
+  const hostHooksDir = path.join(hostHome, '.claude', 'hooks');
+  if (fs.existsSync(hostHooksDir)) {
+    mounts.push({
+      hostPath: hostHooksDir,
+      containerPath: '/home/node/.claude/hooks',
+      readonly: true,
+    });
+  }
 
   // Mount skills read-only (overlays the .claude mount above)
   const skillsSrc = path.join(process.cwd(), 'container', 'skills');

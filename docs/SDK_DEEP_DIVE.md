@@ -141,7 +141,7 @@ type McpServerConfig =
 
 ```typescript
 type SdkBeta = 'context-1m-2025-08-07';
-// Enables 1M token context window for Opus 4.6, Sonnet 4.5, Sonnet 4
+// Enables 1M token context window for Opus 4.7, Sonnet 4.5, Sonnet 4
 ```
 
 ### CanUseTool

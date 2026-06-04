@@ -53,7 +53,7 @@ cp .env.example .env
 
 ### Required settings
 
-Use AskUserQuestion: **Which Claude model do you want to use?** (default: `claude-sonnet-4-6`, options: `claude-sonnet-4-6`, `claude-opus-4-6`, `claude-haiku-4-5`)
+Use AskUserQuestion: **Which Claude model do you want to use?** (default: `claude-opus-4-8`, options: `claude-opus-4-8`, `claude-sonnet-4-6`, `claude-haiku-4-5`)
 
 Write the model to `.env` as `ANTHROPIC_MODEL=<model>`.
 

@@ -73,6 +73,7 @@ interface GroupState {
   active: boolean;
   idleWaiting: boolean;
   isTaskContainer: boolean;
+  runningTaskId: string | null;
   pendingMessages: boolean;
   pendingTasks: QueuedTask[];
   process: ChildProcess | null;
@@ -97,6 +98,7 @@ export class GroupQueue {
         active: false,
         idleWaiting: false,
         isTaskContainer: false,
+        runningTaskId: null,
         pendingMessages: false,
         pendingTasks: [],
         process: null,
@@ -111,6 +113,30 @@ export class GroupQueue {
 
   isActive(groupJid: string): boolean {
     return this.groups.get(groupJid)?.active ?? false;
+  }
+
+  /** True if `taskId` is queued (waiting to start) for `groupJid`. */
+  hasPendingTask(groupJid: string, taskId: string): boolean {
+    const state = this.groups.get(groupJid);
+    if (!state) return false;
+    return state.pendingTasks.some((t) => t.id === taskId);
+  }
+
+  /** True if `taskId` is the task currently executing for `groupJid`. */
+  isRunningTask(groupJid: string, taskId: string): boolean {
+    const state = this.groups.get(groupJid);
+    if (!state) return false;
+    return state.isTaskContainer && state.runningTaskId === taskId;
+  }
+
+  /** Set of all task IDs currently executing or queued, across all groups. */
+  getActiveTaskIds(): Set<string> {
+    const ids = new Set<string>();
+    for (const state of this.groups.values()) {
+      if (state.runningTaskId) ids.add(state.runningTaskId);
+      for (const t of state.pendingTasks) ids.add(t.id);
+    }
+    return ids;
   }
 
   setProcessMessagesFn(fn: (groupJid: string) => Promise<boolean>): void {
@@ -295,6 +321,7 @@ export class GroupQueue {
     state.active = true;
     state.idleWaiting = false;
     state.isTaskContainer = true;
+    state.runningTaskId = task.id;
     this.activeCount++;
 
     logger.debug(
@@ -309,6 +336,7 @@ export class GroupQueue {
     } finally {
       state.active = false;
       state.isTaskContainer = false;
+      state.runningTaskId = null;
       state.process = null;
       state.containerName = null;
       state.groupFolder = null;

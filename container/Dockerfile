@@ -107,6 +107,34 @@ RUN chown -R node:node /workspace && chmod 777 /home/node
 # Switch to non-root user (required for --dangerously-skip-permissions)
 USER node
 
+# Make HOME explicit. The container-runner only injects -e HOME=/home/node when the host uid
+# differs from the node user's (1000); on this EC2 host (ec2-user is uid 1000) that branch is
+# skipped, so without this the runtime HOME would rely on the OCI runtime's passwd lookup.
+# gh resolves its extensions dir from $HOME ($HOME/.local/share/gh), so pin it here.
+ENV HOME=/home/node
+
+# Install the gh-stack extension (GitHub Stacked PRs) so agents can create and manage
+# stacks of dependent PRs via `gh stack`. The extension lives at
+# /home/node/.local/share/gh/extensions/gh-stack — baked into the image (NOT a runtime
+# mount), so it persists for every agent run. Runtime gh auth comes from GH_TOKEN (injected
+# from groups/global/.env-shared). We fetch the public release binary directly rather than
+# `gh extension install` (which requires a GitHub token even for public repos) and hand-write
+# the same manifest.yml that install produces. `gh stack --help` validates dispatch without a
+# token. Bump the pinned tag below to upgrade the extension.
+RUN set -eux; \
+    arch="$(dpkg --print-architecture)"; \
+    case "$arch" in \
+      arm64) asset=linux-arm64 ;; \
+      amd64) asset=linux-amd64 ;; \
+      *) echo "unsupported arch: $arch" >&2; exit 1 ;; \
+    esac; \
+    ext_dir=/home/node/.local/share/gh/extensions/gh-stack; \
+    mkdir -p "$ext_dir"; \
+    curl -fsSL "https://github.com/github/gh-stack/releases/download/v0.0.5/$asset" -o "$ext_dir/gh-stack"; \
+    chmod +x "$ext_dir/gh-stack"; \
+    printf 'owner: github\nname: gh-stack\nhost: github.com\ntag: v0.0.5\nispinned: false\npath: %s/gh-stack\n' "$ext_dir" > "$ext_dir/manifest.yml"; \
+    HOME=/home/node gh stack --help >/dev/null
+
 # Set working directory to group workspace
 WORKDIR /workspace/group
 

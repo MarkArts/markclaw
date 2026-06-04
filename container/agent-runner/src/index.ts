@@ -181,13 +181,18 @@ process.stdin.on('end', () => {
     settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
   } catch { /* fresh settings */ }
 
+  // Prepend (not replace) so host-propagated hooks from ~/.claude/settings.json
+  // (pre-commit, post-push CI monitor, etc.) remain active.
+  const existingHooks = (settings.hooks as Record<string, unknown>) || {};
+  const existingPreToolUse = (existingHooks.PreToolUse as unknown[]) || [];
   settings.hooks = {
-    ...(settings.hooks as Record<string, unknown> || {}),
+    ...existingHooks,
     PreToolUse: [
       {
         matcher: 'Bash',
         hooks: [`node ${hookScript}`],
       },
+      ...existingPreToolUse,
     ],
   };
 
@@ -386,7 +391,8 @@ async function main(): Promise<void> {
   // Write MCP config for the markclaw IPC server
   writeMcpConfig(containerInput, sdkEnv);
 
-  // Write bash sanitization hook
+  // Write bash sanitization hook — host-defined workflow hooks (pre-commit,
+  // post-push CI monitor, etc.) are propagated by container-runner.ts.
   writeSanitizeBashHook();
 
   // Discover additional directories

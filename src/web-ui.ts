@@ -935,6 +935,12 @@ function handleSchedules(res: http.ServerResponse): void {
     .prepare('SELECT * FROM scheduled_tasks ORDER BY created_at DESC')
     .all() as any[];
 
+  // Snapshot of which task IDs are currently executing or queued in the
+  // GroupQueue. Used to render a "running" badge per schedule card.
+  const activeTaskIds = getActiveTaskIdsFn
+    ? getActiveTaskIdsFn()
+    : new Set<string>();
+
   // Build index of JSONL files with their total cost and mtime for task group folders
   const groupFileCosts: Record<
     string,
@@ -1095,7 +1101,7 @@ function handleSchedules(res: http.ServerResponse): void {
     const defaultModel =
       process.env.ANTHROPIC_MODEL ||
       dotEnv.ANTHROPIC_MODEL ||
-      'claude-sonnet-4-6';
+      'claude-opus-4-8';
     const configuredModel = t.model || defaultModel;
     const configuredFamily = getModelFamily(configuredModel);
     // Historical runs used the default model (or whatever was set at the time)
@@ -1128,6 +1134,7 @@ function handleSchedules(res: http.ServerResponse): void {
       cost_per_week: costPerWeek,
       effective_model: configuredModel,
       model_family: configuredFamily,
+      is_running: activeTaskIds.has(t.id),
     };
   });
 
@@ -2270,11 +2277,15 @@ function handleScheduleRunNow(
         jsonResponse(res, { error: 'id required' }, 400);
         return;
       }
-      // Respond immediately so the UI doesn't wait for the task to complete
-      jsonResponse(res, { ok: true, id });
-      triggerTaskNow(id).catch((err) => {
-        logger.error({ taskId: id, err }, 'Run-now task failed');
-      });
+      let state: 'started' | 'queued' | 'duplicate';
+      try {
+        state = triggerTaskNow(id);
+      } catch (err) {
+        logger.error({ taskId: id, err }, 'Run-now trigger failed');
+        jsonResponse(res, { error: (err as Error).message }, 500);
+        return;
+      }
+      jsonResponse(res, { ok: true, id, state });
     } catch (err) {
       logger.error({ err }, 'Failed to handle schedule-run-now');
       jsonResponse(res, { error: 'invalid request' }, 400);
@@ -3269,7 +3280,7 @@ function runClaudePrompt(prompt: string): Promise<string> {
 
     args.push('--entrypoint', 'claude');
     args.push(CONTAINER_IMAGE);
-    const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6';
+    const model = process.env.ANTHROPIC_MODEL || 'claude-opus-4-8';
     args.push('--print', '--model', model, '--max-turns', '1', '-p', prompt);
 
     const proc = spawn(CONTAINER_RUNTIME_BIN, args, {
@@ -3470,6 +3481,7 @@ let storeChatMetadataFn:
       isGroup?: boolean,
     ) => void)
   | null = null;
+let getActiveTaskIdsFn: (() => Set<string>) | null = null;
 
 export function startWebUI(opts?: {
   routeOutbound?: (jid: string, text: string) => Promise<void>;
@@ -3485,11 +3497,13 @@ export function startWebUI(opts?: {
     channel?: string,
     isGroup?: boolean,
   ) => void;
+  getActiveTaskIds?: () => Set<string>;
 }): void {
   if (opts?.routeOutbound) routeOutboundFn = opts.routeOutbound;
   if (opts?.registerGroup) registerGroupFn = opts.registerGroup;
   if (opts?.enqueueMessageCheck) enqueueMessageCheckFn = opts.enqueueMessageCheck;
   if (opts?.storeChatMetadata) storeChatMetadataFn = opts.storeChatMetadata;
+  if (opts?.getActiveTaskIds) getActiveTaskIdsFn = opts.getActiveTaskIds;
   // Ensure public dir exists
   if (!fs.existsSync(PUBLIC_DIR)) {
     logger.warn(

@@ -212,12 +212,33 @@ let storedDeps: SchedulerDependencies | null = null;
 /**
  * Trigger a task to run immediately, regardless of its schedule or status.
  * Used by the web UI "Run Now" button.
+ *
+ * Returns the run state so the caller can show useful UI feedback:
+ *  - 'started'   — task was enqueued and is running now (or will start as
+ *                  soon as the queue has capacity)
+ *  - 'queued'    — group is busy; this run will start when the current
+ *                  container finishes
+ *  - 'duplicate' — same task is already running or queued; nothing changed
  */
-export async function triggerTaskNow(taskId: string): Promise<void> {
+export function triggerTaskNow(
+  taskId: string,
+): 'started' | 'queued' | 'duplicate' {
   if (!storedDeps) throw new Error('Scheduler not started');
   const task = getTaskById(taskId);
   if (!task) throw new Error(`Task not found: ${taskId}`);
-  await runTask(task, storedDeps);
+
+  const queue = storedDeps.queue;
+  const wasActive = queue.isActive(task.chat_jid);
+  const alreadyQueued = queue.hasPendingTask(task.chat_jid, task.id);
+
+  if (alreadyQueued) return 'duplicate';
+  // If a container for this group is already running the same task right now,
+  // treat as duplicate. The queue tracks the running task ID separately from
+  // pending; check it before enqueueing.
+  if (queue.isRunningTask(task.chat_jid, task.id)) return 'duplicate';
+
+  queue.enqueueTask(task.chat_jid, task.id, () => runTask(task, storedDeps!));
+  return wasActive ? 'queued' : 'started';
 }
 
 export function startSchedulerLoop(deps: SchedulerDependencies): void {
