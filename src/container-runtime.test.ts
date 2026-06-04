@@ -64,15 +64,20 @@ describe('ensureContainerRuntimeRunning', () => {
     );
   });
 
-  it('throws when docker info fails', () => {
+  it('warns and continues (does not throw) when the runtime is unavailable', () => {
     mockExecSync.mockImplementationOnce(() => {
       throw new Error('Cannot connect to the Docker daemon');
     });
 
-    expect(() => ensureContainerRuntimeRunning()).toThrow(
-      'Container runtime is required but failed to start',
+    // The runtime is optional: agents fail to spawn but the Web UI still works,
+    // so the function logs a warning and returns rather than throwing.
+    expect(() => ensureContainerRuntimeRunning()).not.toThrow();
+
+    expect(mockExecSync).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ err: expect.any(Error) }),
+      'Container runtime not available — agents will fail to spawn. Web UI still works.',
     );
-    expect(logger.error).toHaveBeenCalled();
   });
 });
 
